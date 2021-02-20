@@ -2,59 +2,27 @@
 pragma solidity ^0.6.6;
 
 import "https://github.com/Woonkly/OpenZeppelinBaseContracts/contracts/math/SafeMath.sol";
-import "https://github.com/Woonkly/OpenZeppelinBaseContracts/contracts/token/ERC20/ERC20.sol";
-import "https://github.com/Woonkly/OpenZeppelinBaseContracts/contracts/utils/ReentrancyGuard.sol";
-
-import "https://github.com/Woonkly/DEXsmartcontractsPreRelease/StakeManager.sol";
-import "https://github.com/Woonkly/DEXsmartcontractsPreRelease/IwoonklyPOS.sol";
-
-import "https://github.com/Woonkly/DEXsmartcontractsPreRelease/IWStaked.sol";
-import "https://github.com/Woonkly/MartinHSolUtils/PausabledLMH.sol";
+import "https://github.com/Woonkly/DEFImultiStablePOOL/PoolERC20BASE.sol";
 
 
-
-contract PoolERC20  is Owners,PausabledLMH, ReentrancyGuard {
+contract PoolERC20COIN  is PoolERC20BASE {
 
     using SafeMath for uint256;
-    IERC20 token;
-    
     uint256 public totalLiquidity;
-    uint32 internal _fee;
-    uint32 internal _baseFee;
-    address internal _operations;
-    address internal _beneficiary;
-    uint256 internal _coin_reserve;
-    address internal _woonckyPOS;
-    address internal _woonclyBEP20;
-    IWStaked internal  _stakes;
-    address internal  _stakeable;
-    IWStaked internal  _stakesSH;
-    address internal  _stakeableSH;
-    address internal _woopSharedFunds;        
-    uint256 internal _gasRequired;
+    IERC20 internal _tokenA;
+    address internal _erc20A;
 
-
-  constructor(address token_addr,uint32 fee,address operations, address beneficiary,address stake,address stakeSH,address woopSharedFunds)
+  constructor(address erc20A, address erc20B, 
+            uint32 feeReward,uint32 feeOperation, uint32 feeCross,
+            address operations, address beneficiary,address crossbeneficiary,
+            address stake,bool isBNBenv) PoolERC20BASE(  erc20B, feeReward, feeOperation,  feeCross,
+                                                    operations,  beneficiary, crossbeneficiary, stake, isBNBenv)
     public {
-            token = IERC20(token_addr);
-            _woonclyBEP20=token_addr;
-            _fee=fee;
-            _paused=true;
-            _beneficiary=beneficiary;
-            _operations=operations;
-            _baseFee=10000;
-            _coin_reserve=0;
-            _woonckyPOS=address(0);
-            _stakeable=stake;
-            _stakes= IWStaked(stake);
-            _stakeableSH=stakeSH;
-            _stakesSH= IWStaked(stakeSH);
-            _woopSharedFunds=woopSharedFunds;
-            _gasRequired=150000;
+
+            _erc20A=erc20A;
+            _tokenA = IERC20(erc20A);
+
   }
-  
-
-
 
 
     function getCoinReserve() public view returns(uint256){
@@ -62,20 +30,76 @@ contract PoolERC20  is Owners,PausabledLMH, ReentrancyGuard {
     }
 
 
-    function getFee() public view returns(uint32){
-        return _fee;    
+    function isBNB() public view returns(bool){
+        return _isCOIN;
+    }
+
+    function isCOIN() public view returns(bool){
+        return _isBNBenv;
+    }
+
+
+    function getBeneficiary() public view returns(address){
+        return _beneficiary;    
     }
     
-    event FeeChanged(uint32 oldFee, uint32 newFee);
+    event BeneficiaryChanged(address oldBn, address newBn);
 
-    function setFee(uint32 newFee) public onlyIsInOwners returns(bool){
-        require( (newFee>0 && newFee<=1000000),'DX:!');
-        uint32 old=_fee;
-        _fee=newFee;
-        emit FeeChanged(old,_fee);
+    function setBeneficiary(address newBn) public onlyIsInOwners returns(bool){
+        require(newBn != address(0), "DX:0addr");
+        address old=_beneficiary;
+        _beneficiary = newBn;
+        emit BeneficiaryChanged(old,_beneficiary);
         return true;
     }
 
+
+
+
+    function getFeeOperation() public view returns(uint32){
+        return _feeOperation;    
+    }
+    
+    event FeeOperationChanged(uint32 oldFee, uint32 newFee);
+
+    function setFeeOperation(uint32 newFee) public onlyIsInOwners returns(bool){
+        require( (newFee>0 && newFee<=1000000),'DX:!');
+        uint32 old=_feeOperation;
+        _feeOperation=newFee;
+        emit FeeOperationChanged(old,_feeOperation);
+        return true;
+    }
+
+
+    function getFeeReward() public view returns(uint32){
+        return _feeReward;    
+    }
+    
+    event FeeRewardChanged(uint32 oldFee, uint32 newFee);
+
+    function setFeeReward(uint32 newFee) public onlyIsInOwners returns(bool){
+        require( (newFee>0 && newFee<=1000000),'DX:!');
+        uint32 old=_feeReward;
+        _feeReward=newFee;
+        emit FeeRewardChanged(old,_feeReward);
+        return true;
+    }
+    
+    
+
+    function getFeeCROSS() public view returns(uint32){
+        return _feeCross;    
+    }
+    
+    event CROSSRewardChanged(uint32 oldFee, uint32 newFee);
+
+    function setFeeCROSS(uint32 newFee) public onlyIsInOwners returns(bool){
+        require( (newFee>0 && newFee<=1000000),'DX:!');
+        uint32 old=_feeCross;
+        _feeCross=newFee;
+        emit CROSSRewardChanged(old,_feeReward);
+        return true;
+    }
 
 
 
@@ -89,7 +113,7 @@ contract PoolERC20  is Owners,PausabledLMH, ReentrancyGuard {
         require( (newbFee>0 && newbFee<=1000000),'DX:!');
         uint32 old=_baseFee;
         _baseFee=newbFee;
-        emit FeeChanged(old,_baseFee);
+        emit BaseFeeChanged(old,_baseFee);
         return true;
     }
 
@@ -126,35 +150,7 @@ contract PoolERC20  is Owners,PausabledLMH, ReentrancyGuard {
     }
     
 
-    function getWoonklyPOS() public view returns(address){
-        return _woonckyPOS;    
-    }
-    
-    event WoonklyPOSChanged(address oldaddr, address newaddr);
 
-    function setWoonklyPOS(address newAddr) public onlyIsInOwners returns(bool){
-        address old=_woonckyPOS;
-        _woonckyPOS=newAddr;
-        emit WoonklyPOSChanged(old,_woonckyPOS);
-        return true;
-    }
-
-    
-    
-
-    function getBeneficiary() public view returns(address){
-        return _beneficiary;    
-    }
-    
-    event BeneficiaryChanged(address oldBn, address newBn);
-
-    function setBeneficiary(address newBn) public onlyIsInOwners returns(bool){
-        require(newBn != address(0), "DX:0addr");
-        address old=_beneficiary;
-        _beneficiary = newBn;
-        emit BeneficiaryChanged(old,_beneficiary);
-        return true;
-    }
 
 
 
@@ -174,45 +170,43 @@ contract PoolERC20  is Owners,PausabledLMH, ReentrancyGuard {
     }
 
 
-    function getStakeAddrSH() public view returns(address){
-        return _stakeableSH;
+
+
+    function getTokenAAddr() public view returns(address){
+        return _erc20A;
     }
     
     
-    event StakeSHAddrChanged(address old,address news);
-    function setStakeSHAddr(address news) public onlyIsInOwners returns(bool){
-        address old=_stakeableSH;
-        _stakeableSH=news;
-        _stakesSH= IWStaked(news);
-        emit StakeSHAddrChanged(old,news);
+    event TokenAChanged(address old,address news);
+    function setTokenAAddr(address news) public onlyIsInOwners returns(bool){
+        address old=_erc20A;
+        _erc20A=news;
+        _tokenA= ERC20(news);
+        emit TokenAChanged(old,news);
         return true;
     }
 
 
-
-    function getWoopSHFunds() public view returns(address){
-        
-        return _woopSharedFunds;
+    function getTokenBAddr() public view returns(address){
+        return _erc20B;
     }
     
     
-    event WoopSHFundsChanged(address old,address news);
-    function setWoopSHFunds(address news) public onlyIsInOwners returns(bool){
-        address old=_woopSharedFunds;
-        _woopSharedFunds=news;
-
-        emit  WoopSHFundsChanged(old,news);
+    event TokenBChanged(address old,address news);
+    function setTokenBAddr(address news) public onlyIsInOwners returns(bool){
+        address old=_erc20B;
+        _erc20B=news;
+        _tokenB= ERC20(news);
+        emit TokenBChanged(old,news);
         return true;
     }
-
-
 
 
     
     event CoinReceived(uint256 coins);
-      receive() external payable {
+      receive() external payable override {
             if(!isPaused()) {
-                coinToToken();
+                //coinToToken();
             }
             emit CoinReceived(msg.value);
         }
@@ -222,125 +216,91 @@ contract PoolERC20  is Owners,PausabledLMH, ReentrancyGuard {
         return true;
     }
 
-    fallback()  external payable { emit CoinReceived(msg.value); }
-  
-    function getMyCoinBalance() public view returns(uint256){
-        return  address(this).balance;
-    }
-  
     
-    function getMyTokensBalance() public view returns(uint256){
-        return token.balanceOf(address(this));
-    }
-
-    function getSCtokenAddress() public view returns(address){
-        return address(token);
-    }
-    
-
-
-    function _addStake(address account, uint256 amount,bool isSH)   internal returns(bool){
-        
-        IWStaked stk=getSTK(isSH);
-
-        if(!stk.StakeExist(account)){
-            //NEW
-            stk.newStake(account, amount );
-        }else{
-            //has funds
-            stk.addToStake(account, amount);
-        }
-        
-        return true;
-        
-    }
-
-
-
-
   
-    event PoolCreated(uint256 totalLiquidity,address investor,uint256 token_amount);
+    event PoolCreatedCOIN(uint256 totalLiquidity,address investor,uint256 token_amount);
     
-    function createPool(uint256 token_amount) public payable   returns (uint256) {
+    function createPoolCOIN(uint256 token_amount) public payable   returns (uint256) {
+        
+        require(_isCOIN,"MP:1");
 
-        require(token.allowance(_msgSender(),address(this)) >= token_amount , "!aptk"); 
+        require(_tokenB.allowance(_msgSender(),address(this)) >= token_amount , "!aptk"); 
         
         require(! _stakes.StakeExist(_msgSender()),"DX:!");    
-        require(totalLiquidity==0,"DEX:i");
-        require(msg.value > 0 ,"DX:I");
-        totalLiquidity = address(this).balance;
-        _coin_reserve = totalLiquidity;
         
-        _addStake(_msgSender(), totalLiquidity,false); 
-        
-        require(token.transferFrom(_msgSender(), address(this), token_amount));
-        _paused=false;
-        emit PoolCreated( totalLiquidity,_msgSender(),token_amount);
-        return totalLiquidity;
-    }
-    
-
-    function migratePool(uint256 token_amount,uint256 newLiq) public payable onlyIsInOwners  returns (uint256) {
-        
-        require( isPaused() ,"p");
-
-        require(token.allowance(_msgSender(),address(this)) >= token_amount , "!aptk"); 
-        
-        require(totalLiquidity==0,"DEX:i");
+        require(totalLiquidityCOIN==0,"DEX:i");
         
         require(msg.value > 0 ,"DX:I");
         
-        totalLiquidity =newLiq ;
-        _coin_reserve = address(this).balance;
+        totalLiquidityTOKEN=0;
+        totalLiquidityCOIN = address(this).balance;
+        _coin_reserve = totalLiquidityCOIN;
+        
+        _stakes.manageStake(_msgSender(), totalLiquidityCOIN);
 
-        require(token.transferFrom(_msgSender(), address(this), token_amount));
+        require(_tokenB.transferFrom(_msgSender(), address(this), token_amount));
+        
         _paused=false;
-        emit PoolCreated( _coin_reserve,_msgSender(),token_amount);
-        return totalLiquidity;
+        
+        emit PoolCreatedCOIN( totalLiquidityCOIN,_msgSender(),token_amount);
+        return totalLiquidityCOIN;
     }
     
+    event PoolCreatedTOKEN(uint256 totalLiquidity,address investor,uint256 token_amountA,uint256 token_amountB);
     
+    function createPoolTOKEN(uint256 token_amountA,uint256 token_amountB) public returns (uint256) {
+        
+        require( !_isCOIN,"MP:1");
+
+        require(_tokenA.allowance(_msgSender(),address(this)) >= token_amountA , "!aptk");
+        require(_tokenB.allowance(_msgSender(),address(this)) >= token_amountB , "!aptk"); 
+        
+        require(! _stakes.StakeExist(_msgSender()),"DX:!");    
+        
+        require(totalLiquidityTOKEN==0,"DEX:i");
+        
+
+        totalLiquidityCOIN =0;
+        
+        totalLiquidityTOKEN = token_amountA;
+        
+        _coin_reserve = 0;
+        
+        _stakes.manageStake(_msgSender(), token_amountA);
+
+        require(_tokenA.transferFrom(_msgSender(), address(this), token_amountA));
+        require(_tokenB.transferFrom(_msgSender(), address(this), token_amountB));
+        
+        _paused=false;
+        emit PoolCreatedTOKEN( totalLiquidityTOKEN,_msgSender(),token_amountA,token_amountB);
+        return totalLiquidityCOIN;
+    }
     
+
     
 struct Stake {
     address account;
-    uint256 bnb;
-    uint256 bal;
-    uint256 woop;
+    uint256 liq;
+    uint256 tokena;
+    uint256 tokenb;
     uint8 flag; 
     
   }
     
-
-    
-    event PoolClosed(uint256 eth_reserve,uint256 token_reserve, uint256 liquidity,address destination);    
-    
-    
-    
-
-    function closePool() public onlyIsInOwners  returns(bool){
-        require(totalLiquidity>0,"DX:0");
-
-        uint256 token_reserve = token.balanceOf(address(this));
-
-        require(token.transfer(_operations, token_reserve) ,"DX:1");
-        address payable ow = address(uint160(_operations));
+    function getFee() internal view returns(uint32){
         
-        _coin_reserve = address(this).balance;
-        ow.transfer(_coin_reserve);
+        uint32 fee=  _feeReward + _feeCross +_feeOperation;
+        if(fee > _baseFee){
+            return 0;
+        }
         
-        uint256 liq=totalLiquidity;
-        totalLiquidity=0;
-        _coin_reserve=0;
-        setPause(true);
-        emit PoolClosed( _coin_reserve, token_reserve, liq,ow);    
-        return true;
+        return _baseFee - fee;
+        
     }
 
 
-
     function price(uint256 input_amount, uint256 input_reserve, uint256 output_reserve) public view  returns (uint256) {
-          uint256 input_amount_with_fee = input_amount.mul( uint256(_fee));
+          uint256 input_amount_with_fee = input_amount.mul( uint256(getFee()));
           uint256 numerator = input_amount_with_fee.mul(output_reserve);
           uint256 denominator = input_reserve.mul(_baseFee).add(input_amount_with_fee);
           return numerator / denominator;
@@ -356,34 +316,54 @@ struct Stake {
 
 
 
-    function calcDeal(uint256 amount) public pure returns(uint256,uint256,uint256)  {
+    function calcFees(uint256 amount) public view returns(uint256,uint256,uint256 ,uint256 ){
         
-        uint256 p4=amount.mul(444)/1000;
-        uint256 p1=amount-(p4+p4);
+        uint32 totFee=  _feeReward + _feeCross +_feeOperation;
         
-        return(p4,p4,p1);
+        uint256 reward=amount.mul(_feeReward) / totFee;
+        uint256 oper=amount.mul(_feeOperation) / totFee;
+        uint256 cross=amount.mul(_feeCross) / totFee;
+        uint256 remainder=amount - (reward + oper + cross);
         
+        return ( remainder, reward , oper , cross );
     }
+
+
+
     
-    
-    function isOverLimit(uint256 amount,bool isCoin) public view returns(bool){
-        if( getPercImpact( amount, isCoin)>10 ){
+    function isOverLimit(uint256 amount,bool isTKAorCOIN) public view returns(bool){
+        if( getPercImpact( amount, isTKAorCOIN)>10 ){
           return true;  
         } 
         return false;
     }
     
     
-    function getPercImpact(uint256 amount,bool isCoin) public view returns(uint8){
+    function getPercImpact(uint256 amount,bool isTKAorCOIN) public view returns(uint8){
         
         uint256 reserve=0;
-
-        if(isCoin){
-            reserve=_coin_reserve;
-        }else{
-            reserve=token.balanceOf(address(this));
-        }
         
+        
+        if(_isCOIN){
+            
+            if(isTKAorCOIN){
+                reserve=_coin_reserve;
+            }else{
+                reserve=_tokenB.balanceOf(address(this));
+            }
+            
+            
+        }else{
+            
+            if(isTKAorCOIN){
+                reserve=_tokenA.balanceOf(address(this));
+            }else{
+                reserve=_tokenB.balanceOf(address(this));
+            }
+            
+            
+        }
+
         uint256 p=amount.mul(100)/reserve;
         
         if(p<=100){
@@ -396,22 +376,44 @@ struct Stake {
 
     function getMaxAmountSwap() public view returns(uint256,uint256){
         
-         return( _coin_reserve.mul(10)/100 , token.balanceOf(address(this)).mul(10)/100  );
+        if(_isCOIN){
+            return( _coin_reserve.mul(10)/100 , _tokenB.balanceOf(address(this)).mul(10)/100  );    
+        }else{
+            return( _tokenA.balanceOf(address(this)).mul(10)/100 , _tokenB.balanceOf(address(this)).mul(10)/100  );    
+        }
+         
         
     }
-    
 
-    function currentTokensToCoin(uint256 token_amount)public view returns(uint256){
-          uint256 token_reserve = token.balanceOf(address(this));
-          return price(token_amount, token_reserve, _coin_reserve); 
+
+    function currentAtoB(uint256 token_amountA) public view returns(uint256){
+
+        if(_isCOIN){
+
+            return price(token_amountA, _coin_reserve, _tokenB.balanceOf(address(this))); 
+            
+        }
+            
+        return price(token_amountA, _tokenA.balanceOf(address(this)) , _tokenB.balanceOf(address(this))); 
+
+
     }
     
 
-    function currentCoinToTokens(uint256 coin_amount) public view returns(uint256){
-        uint256 token_reserve = token.balanceOf(address(this));
-        return price(coin_amount, _coin_reserve, token_reserve); 
+    function currentBtoA(uint256 token_amountB) public view returns(uint256){
+
+        if(_isCOIN){
+
+            return price(token_amountB,  _tokenB.balanceOf(address(this)) ,  _coin_reserve); 
+
+            
+        }
+            
+        return  price(token_amountB,  _tokenB.balanceOf(address(this)) ,  _tokenA.balanceOf(address(this))); 
 
     }
+
+
 
     struct processRewardInfo {
             uint256 remainder;
@@ -422,97 +424,124 @@ struct Stake {
     }        
 
 
-    function WithdrawReward(uint256 amount, bool isCoin, bool isSH)   public returns(bool){
-        
-        IWStaked stk=getSTK(isSH);
-        
+    function WithdrawReward(uint256 amount, bool isTKAorCOIN)   public returns(bool){
+
         require( !isPaused() ,"p");
         
-        require(stk.StakeExist(_msgSender()),"DX:!");        
+        require(_stakes.StakeExist(_msgSender()),"DX:!");        
         
-        _withdrawReward( _msgSender(),  amount, isCoin, isSH);
+        _withdrawReward( _msgSender(),  amount, isTKAorCOIN);
 
         return true;
     }
 
 
-    function getSTK(bool isSH) internal view returns(IWStaked){
 
-        if(isSH){
-             return _stakesSH;
-        }
-        
-        return _stakes;
-    }
-
-
-    function _withdrawReward(address account, uint256 amount , bool isCoin, bool isSH)  internal returns(bool){
+    function _withdrawReward(address account, uint256 amount , bool isTKAorCOIN)  internal returns(bool){
         
         require( !isPaused() ,"p");
         
-        IWStaked stk=getSTK(isSH);
         
-        if(!stk.StakeExist(account)){
+        
+        if(!_stakes.StakeExist(account)){
             return false;
         }
         
-        uint256 bnb=0;
-        uint256 woop=0;
+        uint256 tka=0;
+        uint256 tkb=0;
         
-        (bnb, woop) =stk.getReward(account );
+        (tka, tkb) =_stakes.getValues(account );
         
         uint256 remainder = 0;
         
-        if(isCoin){
-            require(amount <= bnb,"DX:1");    
-
-            require( amount <= getMyCoinBalance() ,"DX:-c" );        
+        if(_isCOIN){
             
-            address(uint160(account)).transfer(amount);
+            if(isTKAorCOIN){
+                require(amount <= tka,"DX:1");    
+    
+                require( amount <= getMyCoinBalance() ,"DX:-c" );        
+                
+                address(uint160(account)).transfer(amount);
+    
+                remainder = tka.sub(amount);
+                
+    
+            }else{  //token
+                
+                require(amount <= tkb,"DX:amew");    
+    
+                require( amount <= getMyTokensBalance(_erc20B) ,"DX:-tk" );     
+                
+                require(_tokenB.transfer(account, amount) ,"DX:5");    
 
-            remainder = bnb.sub(amount);
+                remainder = tkb.sub(amount);
+            }
+
             
-
-        }else{  //token
+        }else{
             
-            require(amount <= woop,"DX:amew");    
+            if(isTKAorCOIN){
+                require(amount <= tka,"DX:1");    
+                
+                require( amount <= getMyTokensBalance(_erc20A) ,"DX:-tk" );     
+                
+                require(_tokenA.transfer(account, amount) ,"DX:5");    
 
-            require( amount <= getMyTokensBalance() ,"DX:-tk" );     
-            
-            require(token.transfer(account, amount) ,"DX:5");    
-        
+                remainder = tka.sub(amount);
+                
+    
+            }else{  //token
+                
+                require(amount <= tkb,"DX:amew");    
+    
+                require( amount <= getMyTokensBalance(_erc20B) ,"DX:-tk" );     
+                
+                require(_tokenB.transfer(account, amount) ,"DX:5");    
 
-            remainder = woop.sub(amount);
+                remainder = tkb.sub(amount);
+            }
+
         }
+        
         
         
         if(remainder==0){
-            stk.changeReward(account,0, isCoin,1);    
+            _stakes.changeToken(account,0, 1,isTKAorCOIN);
+            
         }else{
-            stk.changeReward(account,remainder, isCoin,1);    
+            _stakes.changeToken(account,remainder, 1,isTKAorCOIN);
+
         }
-        
-        
+
     }
 
 
 
 
-    function getCalcRewardAmount(address account,  uint256 amount, bool isSH) public view returns(uint256,uint256){
+    function getCalcRewardAmount(address account,  uint256 amount) public view returns(uint256,uint256){
         
-        IWStaked stk=getSTK(isSH);
+    
         
-        if(!stk.StakeExist(account)) return (0,0);
+        if(!_stakes.StakeExist(account)) return (0,0);
 
         uint256 liq=0;
+        uint256 part=0;
 
 
-        (liq,,) = stk.getStake(account);
+        (liq,,) = _stakes.getStake(account);
 
         
         if(liq==0 ) return (0,0);
+        
+        if(_isCOIN){
+            part=liq * amount / totalLiquidityCOIN;
+            
+        }else{
+            
+            part=liq * amount / totalLiquidityTOKEN;
+            
+        }
 
-        uint256 part=liq * amount / totalLiquidity;
         
         if(part==0) return (0,0);
         
@@ -522,32 +551,34 @@ struct Stake {
 
     }
 
-    event InsuficientRewardFund(address account,bool isCoin, bool isSH);
-    event NewLeftover(address account, uint256 leftover,bool isCoin);
+    event InsuficientRewardFund(address account,bool isTKAorCOIN);
+    event NewLeftover(address account, uint256 leftover,bool isTKAorCOIN);
 
 
-    function _DealLiquidity( uint256 amount,bool isCoin, bool isSH) internal returns(uint256){
+    function _DealLiquidity( uint256 amount,bool isTKAorCOIN) internal returns(uint256){
         
         processRewardInfo memory slot; slot.dealed=0;
         
         Stake memory p;
         
-        IWStaked stk=getSTK(isSH);
 
-        uint256 last=stk.getLastIndexStakes();
+        uint256 last=_stakes.getLastIndexStakes();
 
         for (uint256 i = 0; i < (last +1) ; i++) {
+
+            (p.account,p.liq ,p.tokena,p.tokenb ,p.flag)=_stakes.getStakeByIndex(i);
             
-            (p.account,p.bal ,p.bnb,p.woop ,p.flag)=stk.getStakeByIndex(i);
             if(p.flag == 1 ){
 
-                (slot.woopsRewards, slot.remainder) = getCalcRewardAmount(p.account, amount, isSH );
+                (slot.woopsRewards, slot.remainder) = getCalcRewardAmount(p.account, amount );
                 if(slot.woopsRewards>0){
-                    stk.changeReward(p.account,slot.woopsRewards, isCoin,2);    
+                    
+                    _stakes.changeToken(p.account,slot.woopsRewards, 2,isTKAorCOIN);
+
                     slot.dealed=slot.dealed.add(slot.woopsRewards);
 
                 }else{
-                    emit InsuficientRewardFund( p.account,isCoin,isSH);
+                    emit InsuficientRewardFund( p.account,isTKAorCOIN);
                 }
 
             }
@@ -560,38 +591,23 @@ struct Stake {
 
 
 
-    function _triggerReward(uint256 amount, bool isCoin) internal returns(bool){
-        
-        if(_woonckyPOS==address(0)){
-            return false;
-        }
-        
-        if(isCoin){
-            address payable ac=address(uint160(_woonckyPOS));
-            (bool success,  ) =ac.call{gas: _gasRequired,value: amount}("");
-            return success;
-            
-        }else{
-            IwoonklyPOS wsc=IwoonklyPOS(_woonckyPOS);
-            token.approve(_woonckyPOS, amount);
-            return wsc.processReward(_woonclyBEP20, amount);
-        }
-    }
-    
+
     
 
     event PurchasedTokens(address purchaser,uint256 coins, uint256 tokens_bought);
-    event FeeTokens(uint256 bnPart,uint256 liqPart,uint256 opPart,address beneficiary , address operations);
+    event FeeTokens(uint256 liqPart,uint256 opPart,uint256 crossPart , address operations, address beneficiary, address crossbeneficiary);
     
     function coinToToken() public payable   returns (uint256) {
         
+        require(_isCOIN,"MP:1");
+        
         require( !isPaused() ,"p");
         
-        require(totalLiquidity>0,"DX:0");
+        require(totalLiquidityCOIN>0,"MP:0");
         
-        require(!isOverLimit(msg.value,true),'DX:c');
+        require(!isOverLimit(msg.value,true),'MP:c');
         
-        uint256 token_reserve = token.balanceOf(address(this));
+        uint256 token_reserve = _tokenB.balanceOf(address(this));
         
         uint256 tokens_bought = price(msg.value, _coin_reserve , token_reserve);
         
@@ -599,37 +615,36 @@ struct Stake {
         
         _coin_reserve=_coin_reserve.add(msg.value);
         
-        require( tokens_bought <= getMyTokensBalance() ,"DX:a" );
-        require(token.transfer(_msgSender(), tokens_bought) ,"DX:b");
+        require( tokens_bought <= getMyTokensBalance(_erc20B) ,"MP:a" );
+        
+        require(_tokenB.transfer(_msgSender(), tokens_bought) ,"MP:b");
         
         emit PurchasedTokens(_msgSender(),  msg.value,  tokens_bought);
         
         uint256 tokens_fee=tokens_bought0fee - tokens_bought;
-        
-        uint256 tokens_bnPart;
+
         uint256 tokens_opPart;
         uint256 tokens_liqPart;
+        uint256 tokens_crPart;
+        uint256 tokens_remainder;
         
-        ( tokens_bnPart, tokens_liqPart, tokens_opPart )=calcDeal(tokens_fee);
-        
-        if(_woonckyPOS==address(0)){
-          
-            require(token.transfer(_beneficiary, tokens_bnPart) ,"DX:1");
-          
+        ( tokens_remainder, tokens_liqPart , tokens_opPart , tokens_crPart )=calcFees(tokens_fee);        
+
+        if(_isBNBenv){
+            require(_tokenB.transferFrom(address(this), _beneficiary, tokens_opPart) ,"MP:2");
         }else{
-          
-            _triggerReward(tokens_bnPart, false);    
+            require(_tokenB.transferFrom(address(this), _operations, tokens_opPart) ,"MP:3");    
         }
 
-        require(token.transfer(_operations, tokens_opPart) ,"DX:3");
+        require(_tokenB.transfer(_crossbeneficiary, tokens_crPart) ,"MP:1");    
+
         
         processRewardInfo memory slot;
         
-        slot.dealed=_DealLiquidity( tokens_liqPart, false,false);
-        
-        slot.dealed+=_DealLiquidity( tokens_liqPart, false,true);
-        
-        emit FeeTokens(tokens_bnPart,tokens_liqPart,tokens_opPart,_beneficiary, _operations);
+        slot.dealed=_DealLiquidity( tokens_liqPart, false);
+
+        emit FeeTokens(tokens_liqPart,tokens_opPart,tokens_crPart ,_operations, _beneficiary, _crossbeneficiary);
+
         
         if(slot.dealed > tokens_liqPart ){
             return tokens_bought;
@@ -638,31 +653,98 @@ struct Stake {
         uint256 leftover=tokens_liqPart.sub(slot.dealed);
         
         if(leftover > 0){
-            require(token.transfer(_operations, leftover) ,"DX:4");
+            require(_tokenB.transfer(_operations, leftover) ,"MP:4");
             emit NewLeftover( _operations, leftover,false);
         }
-        
-
 
         return tokens_bought;
     }
     
+
+
+
+    function sellTokenB(uint256 tka_amount) public    returns (uint256) {
+        
+        require(!_isCOIN,"MP:1");
+        
+        require( !isPaused() ,"p");
+        
+        require(totalLiquidityTOKEN>0,"MP:0");
+        
+        require(!isOverLimit(tka_amount,true),'MP:c');
+        
+        uint256 tokenb_reserve = _tokenB.balanceOf(address(this));
+        
+        uint256 tokens_bought = price(tka_amount, getMyTokensBalance(_erc20A) , tokenb_reserve);
+        
+        uint256 tokens_bought0fee = planePrice(tka_amount, getMyTokensBalance(_erc20A) , tokenb_reserve);
+        
+
+        require( tokens_bought <= getMyTokensBalance(_erc20B) ,"MP:a" );
+        
+        require(  _tokenA.allowance(_msgSender(),address(this)) >= tka_amount , "!aptk"); 
+
+        require(_tokenA.transferFrom(_msgSender(), address(this), tka_amount));
+        
+        require(_tokenB.transfer(_msgSender(), tokens_bought) ,"MP:b");
+        
+        emit PurchasedTokens(_msgSender(),  tka_amount,  tokens_bought);
+        
+        uint256 tokens_fee=tokens_bought0fee - tokens_bought;
+
+        uint256 tokens_opPart;
+        uint256 tokens_liqPart;
+        uint256 tokens_crPart;
+        uint256 tokens_remainder;
+        
+        ( tokens_remainder, tokens_liqPart , tokens_opPart , tokens_crPart )=calcFees(tokens_fee);        
+
+        if(_isBNBenv){
+            require(_tokenB.transferFrom(address(this), _beneficiary, tokens_opPart) ,"MP:2");
+        }else{
+            require(_tokenB.transferFrom(address(this), _operations, tokens_opPart) ,"MP:3");    
+        }
+
+        require(_tokenB.transfer(_crossbeneficiary, tokens_crPart) ,"MP:1");    
+
+        processRewardInfo memory slot;
+        
+        slot.dealed=_DealLiquidity( tokens_liqPart, false);
+
+        emit FeeTokens(tokens_liqPart,tokens_opPart,tokens_crPart,  _operations, _beneficiary, _crossbeneficiary);
+        
+        if(slot.dealed > tokens_liqPart ){
+            return tokens_bought;
+        }
+        
+        uint256 leftover=tokens_liqPart.sub(slot.dealed);
+        
+        if(leftover > 0){
+            require(_tokenB.transfer(_operations, leftover) ,"MP:4");
+            emit NewLeftover( _operations, leftover,false);
+        }
+
+        return tokens_bought;
+    }
+
     
 
     event TokensSold(address vendor,uint256 eth_bought,uint256 token_amount);
-    event FeeCoins(uint256 bnPart,uint256 liqPart,uint256 opPart,address beneficiary , address operations);
+    event FeeCoins(uint256 liqPart,uint256 opPart,uint256 crPart,address beneficiary , address operations,address crossbeneficiary);
     
     function tokenToCoin(uint256 token_amount)   public returns (uint256) {
         
+            require(_isCOIN,"MP:1");
+        
             require( !isPaused() ,"p");
 
-            require(  token.allowance(_msgSender(),address(this)) >= token_amount , "!aptk"); 
+            require(  _tokenB.allowance(_msgSender(),address(this)) >= token_amount , "!aptk"); 
             
-            require(totalLiquidity>0,"DX:0");
+            require(totalLiquidityCOIN>0,"MP:0");
             
             require(!isOverLimit(token_amount,false),'DX:c');    
             
-            uint256 token_reserve = token.balanceOf(address(this));
+            uint256 token_reserve = _tokenB.balanceOf(address(this));
             
             uint256 eth_bought = price(token_amount, token_reserve, _coin_reserve ); 
             
@@ -674,39 +756,34 @@ struct Stake {
             
             _coin_reserve =address(this).balance;    
             
-            require(token.transferFrom(_msgSender(), address(this), token_amount));
+            require(_tokenB.transferFrom(_msgSender(), address(this), token_amount));
             
             emit TokensSold(_msgSender(),eth_bought, token_amount);
             
             uint256 eth_fee=eth_bought0fee - eth_bought;
-            uint256 eth_bnPart;
+
             uint256 eth_opPart;
             uint256 eth_liqPart;
+            uint256 eth_crPart;
+            uint256 eth_remainder;
+
+            ( eth_remainder, eth_liqPart , eth_opPart , eth_crPart )=calcFees(eth_fee);
             
             
-            ( eth_bnPart, eth_liqPart, eth_opPart )=calcDeal(eth_fee);
-            
-            address(uint160(_operations)).transfer(eth_opPart);
-            
-            
-            if(_woonckyPOS==address(0)){
-            
-                address(uint160(_beneficiary)).transfer(eth_bnPart);
-            
+            if(_isBNBenv){
+                address(uint160(_beneficiary)).transfer(eth_opPart);
             }else{
-            
-                _triggerReward(eth_bnPart, true);    
-            
+                address(uint160(_operations)).transfer(eth_opPart);
             }
+
+            address(uint160(_crossbeneficiary)).transfer(eth_crPart);
 
             processRewardInfo memory slot;
             
-            slot.dealed=_DealLiquidity( eth_liqPart, true,false);
+            slot.dealed=_DealLiquidity( eth_liqPart, true);
+
             
-            slot.dealed+=_DealLiquidity( eth_liqPart, true, true);
-            
-            
-            emit FeeCoins(eth_bnPart, eth_liqPart, eth_opPart, _beneficiary ,  _operations);
+            emit FeeCoins( eth_liqPart, eth_opPart , eth_crPart , _beneficiary ,  _operations, _crossbeneficiary);
             
             if(slot.dealed > eth_liqPart ){
                 return eth_bought;
@@ -724,165 +801,343 @@ struct Stake {
             return eth_bought;
     }
     
+    
+    
+    
 
-    function calcTokenToAddLiq(uint256 coinDeposit) public view returns(uint256){
-          return (coinDeposit.mul(token.balanceOf(address(this))) / _coin_reserve ).add(1); 
+
+    function sellTokenA(uint256 tokenb_amount)   public returns (uint256) {
+        
+            require(!_isCOIN,"MP:1");
+        
+            require( !isPaused() ,"p");
+
+            require(  _tokenB.allowance(_msgSender(),address(this)) >= tokenb_amount , "!aptk"); 
+            
+            require(totalLiquidityTOKEN>0,"MP:0");
+            
+            require(!isOverLimit(tokenb_amount,false),'MP:c');    
+            
+            uint256 tokenb_reserve = _tokenB.balanceOf(address(this));
+            
+            uint256 tka_bought = price(tokenb_amount, tokenb_reserve, _tokenA.balanceOf(address(this)) ); 
+            
+            uint256 tka_bought0fee = planePrice(tokenb_amount, tokenb_reserve, _tokenA.balanceOf(address(this)) ); 
+            
+            require( tka_bought <= getMyTokensBalance(_erc20A) ,"MP:!" );
+            
+            require(_tokenA.transfer(_msgSender(), tka_bought) ,"MP:b");
+
+            require(_tokenB.transferFrom(_msgSender(), address(this), tokenb_amount),"MP:2");
+            
+            emit TokensSold(_msgSender(),tka_bought, tokenb_amount);
+            
+            uint256 tka_fee=tka_bought0fee - tka_bought;
+
+            uint256 tka_opPart;
+            uint256 tka_crPart;
+            uint256 tka_liqPart;
+            uint256 tka_remainder;
+
+            ( tka_remainder, tka_liqPart , tka_opPart , tka_crPart )=calcFees(tka_fee);
+
+            if(_isBNBenv){
+
+                require(_tokenA.transfer(_beneficiary, tka_opPart) ,"MP:c");
+                
+            }else{
+
+                require(_tokenA.transfer(_operations, tka_opPart) ,"MP:d");
+            }
+
+            require(_tokenA.transfer(_crossbeneficiary, tka_crPart) ,"MP:e");
+
+
+            processRewardInfo memory slot;
+            
+            slot.dealed=_DealLiquidity( tka_liqPart, true);
+
+            
+            emit FeeCoins( tka_liqPart, tka_opPart , tka_crPart , _beneficiary ,  _operations, _crossbeneficiary);
+            
+            if(slot.dealed > tka_liqPart ){
+                return tka_bought;
+            }
+
+            uint256 leftover=tka_liqPart.sub(slot.dealed);
+            
+            if(leftover > 0){
+                
+                require(_tokenA.transfer(_operations, leftover) ,"MP:f");
+                
+                emit NewLeftover( _operations, leftover,true);
+            }
+
+            return tka_bought;
+    }
+    
+    
+    
+    
+    
+    
+    
+
+    function calcTokenBToAddLiq(uint256 tokenAorCoinDeposit) public view returns(uint256){
+            if(_isCOIN){
+                
+                return (tokenAorCoinDeposit.mul(_tokenB.balanceOf(address(this))) / _coin_reserve ).add(1); 
+                
+            }else{
+                
+                return (tokenAorCoinDeposit.mul(_tokenB.balanceOf(address(this))) / _tokenA.balanceOf(address(this)) ).add(1); 
+            }
+            
     }
 
     
 
 
-    event LiquidityChanged(uint256 oldLiq, uint256 newLiq, bool isSH);
+
+
+
+
+    event LiquidityChanged(uint256 oldLiq, uint256 newLiq);
     
-    function AddLiquidity(bool isSH) public payable  returns (uint256) {
+    function AddLiquidityCOIN() public payable  returns (uint256) {
+        
+        require(_isCOIN,"MP:1");
         
         require( !isPaused() ,"p");
         
-        uint256 eth_reserve = _coin_reserve;
+        uint256 tka_reserve = _coin_reserve;
         
-        uint256 token_amount = calcTokenToAddLiq(msg.value);
+        uint256 tokenB_amount = calcTokenBToAddLiq(msg.value);
         
-        address origin = _msgSender();
+
+        require( _msgSender() != address(0) && _tokenB.allowance(_msgSender(),address(this)) >= tokenB_amount   , "MP:1"); 
         
-        if(isSH){
-            origin = _woopSharedFunds;
-        }
-        
-        require( origin != address(0) && token.allowance(origin,address(this)) >= token_amount   , "DX:1"); 
-        
-        uint256 liquidity_minted = msg.value.mul(totalLiquidity) / eth_reserve;
+        uint256 liquidityCOIN_minted = msg.value.mul(totalLiquidityCOIN) / tka_reserve;
         
         _coin_reserve=_coin_reserve.add(msg.value);    
         
-        _addStake(_msgSender(), liquidity_minted, isSH);
+        _stakes.manageStake(_msgSender(), liquidityCOIN_minted);
         
-        uint256 oldLiq=totalLiquidity;
+        uint256 oldLiq=totalLiquidityCOIN;
         
-        totalLiquidity = totalLiquidity.add(liquidity_minted);
+        totalLiquidityCOIN = totalLiquidityCOIN.add(liquidityCOIN_minted);
         
-        require(token.transferFrom(origin, address(this), token_amount));
+        require(_tokenB.transferFrom(_msgSender(), address(this), tokenB_amount));
         
-        emit LiquidityChanged(oldLiq, totalLiquidity, isSH);
+        emit LiquidityChanged(oldLiq, totalLiquidityCOIN);
         
-        return liquidity_minted;
+        return liquidityCOIN_minted;
+    }
+
+
+    function AddLiquidityTOKEN(uint256 tokenA_amount) public   returns (uint256) {
+        
+        require(!_isCOIN,"MP:1");
+        
+        require( !isPaused() ,"p");
+        
+        uint256 tka_reserve = _tokenA.balanceOf(address(this));
+        
+        uint256 tokenB_amount = calcTokenBToAddLiq(tokenA_amount);
+
+        require( _msgSender() != address(0) && _tokenB.allowance(_msgSender(),address(this)) >= tokenB_amount   , "MP:1"); 
+        
+        require(  _tokenA.allowance(_msgSender(),address(this)) >= tokenA_amount   , "MP:2"); 
+        
+        uint256 liquidityTOKEN_minted = tokenA_amount.mul(totalLiquidityTOKEN) / tka_reserve;
+
+        _stakes.manageStake(_msgSender(), liquidityTOKEN_minted);
+        
+        uint256 oldLiq=totalLiquidityTOKEN;
+        
+        totalLiquidityTOKEN = totalLiquidityTOKEN.add(liquidityTOKEN_minted);
+        
+        require(_tokenA.transferFrom(_msgSender(), address(this), tokenA_amount));
+        
+        require(_tokenB.transferFrom(_msgSender(), address(this), tokenB_amount));
+        
+        emit LiquidityChanged(oldLiq, totalLiquidityTOKEN);
+        
+        return liquidityTOKEN_minted;
     }
 
 
 
 
+    function getValuesLiqWithdraw(address investor, uint256 liq) public view returns(uint256, uint256){
 
-    function getValuesLiqWithdraw(address investor, uint256 liq, bool isSH) public view returns(uint256, uint256){
-        
-        IWStaked stk=getSTK(isSH);
-
-        if(!stk.StakeExist(investor)){
+        if(!_stakes.StakeExist(investor)){
             return (0,0);
         }
         
        uint256 inv;
        
-        (inv,,)=stk.getStake(investor);
+        (inv,,)=_stakes.getStake(investor);
         
         if(liq>inv){
             return (0,0);
         }
         
-        uint256 eth_amount = liq.mul(_coin_reserve) / totalLiquidity;
-        uint256 token_amount = liq.mul(token.balanceOf(address(this))) / totalLiquidity;
-        return(eth_amount,token_amount);
-        
+        if(_isCOIN){
+            uint256 tka_amount = liq.mul(_coin_reserve) / totalLiquidityCOIN;
+            uint256 tokenB_amount = liq.mul(_tokenB.balanceOf(address(this))) / totalLiquidityCOIN;
+            return(tka_amount,tokenB_amount);
+        }else{
+            uint256 tka_amount = liq.mul(_tokenA.balanceOf(address(this))) / totalLiquidityTOKEN;
+            uint256 tokenB_amount = liq.mul(_tokenB.balanceOf(address(this))) / totalLiquidityTOKEN;
+            return(tka_amount,tokenB_amount);
+            
+        }
     }
 
 
 
-    function getMaxValuesLiqWithdraw(address investor,bool isSH) public view  returns(uint256,uint256, uint256){
+    function getMaxValuesLiqWithdraw(address investor) public view  returns(uint256,uint256, uint256){
         
-        IWStaked stk=getSTK(isSH);
-        
-        if(!stk.StakeExist(investor)){
+        if(!_stakes.StakeExist(investor)){
             return (0,0,0);
         }
         
-        uint256 token_reserve = token.balanceOf(address(this));
+        uint256 tokenB_reserve = _tokenB.balanceOf(address(this));
 
-       uint256 inv;
+        uint256 tka_amount;
+        uint256 tokenB_amount;
+        uint256 inv;
        
-        (inv,,)=stk.getStake(investor);
+        (inv,,)=_stakes.getStake(investor);
         
-        uint256 eth_amount = inv.mul(_coin_reserve) / totalLiquidity;
-        uint256 token_amount = inv.mul(token_reserve) / totalLiquidity;
-        return(inv,eth_amount,token_amount);
         
+        if(_isCOIN){
+            tka_amount = inv.mul(_coin_reserve) / totalLiquidityCOIN;
+            tokenB_amount = inv.mul(tokenB_reserve) / totalLiquidityCOIN;
+            
+            
+        }else{
+            tka_amount = inv.mul( _tokenA.balanceOf(address(this)) ) / totalLiquidityTOKEN;
+            tokenB_amount = inv.mul(tokenB_reserve) / totalLiquidityTOKEN;
+            
+        }
+        
+        return(inv,tka_amount,tokenB_amount);
     }
     
 
-    event LiquidityWithdraw(address investor,uint256 coins, uint256 token_amount,uint256 newliquidity, bool isSH);
+    event LiquidityWithdraw(address investor,uint256 coins, uint256 token_amount,uint256 newliquidity);
     
-    function _withdrawFunds( address account, uint256 liquid, bool isSH)  internal returns(uint256,uint256){
+    function _withdrawFundsCOIN( address account, uint256 liquid)  internal returns(uint256,uint256){
         
-        IWStaked stk=getSTK(isSH);
+        require(_isCOIN,"MP:1");
 
-        require( stk.StakeExist(account),"DX:!");    
+        require( _stakes.StakeExist(account),"MP:!");    
         
         uint256 inv_liq;
         
-        (inv_liq,,)=stk.getStake(account);
+        (inv_liq,,)=_stakes.getStake(account);
 
-        require( liquid <= inv_liq ,"DX:3" );
+        require( liquid <= inv_liq ,"MP:3" );
         
-        uint256 token_reserve = token.balanceOf(address(this));
+        uint256 tokenB_reserve = _tokenB.balanceOf(address(this));
         
-        uint256 eth_amount = liquid.mul(_coin_reserve) / totalLiquidity;  
+        uint256 tka_amount = liquid.mul(_coin_reserve) / totalLiquidityCOIN;  
         
-        uint256 token_amount = liquid.mul(token_reserve) / totalLiquidity;
+        uint256 tokenB_amount = liquid.mul(tokenB_reserve) / totalLiquidityCOIN;
 
-        require( eth_amount <= getMyCoinBalance() ,"DX:1" );
+        require( tka_amount <= getMyCoinBalance() ,"MP:1" );
         
-        require( token_amount <= getMyTokensBalance() ,"DX:2" );
+        require( tokenB_amount <= getMyTokensBalance(_erc20B) ,"MP:2" );
 
-        stk.substractFromStake(account, liquid);         
+        _stakes.substractFromStake(account, liquid);         
 
-        uint256 oldLiq=totalLiquidity;
+        uint256 oldLiq=totalLiquidityCOIN;
         
-        totalLiquidity = totalLiquidity.sub(liquid);
-        
-        
-        
-        address(uint160(account)).transfer(eth_amount);
+        totalLiquidityCOIN = totalLiquidityCOIN.sub(liquid);
+
+        address(uint160(account)).transfer(tka_amount);
         
         _coin_reserve = address(this).balance;
 
+        require(_tokenB.transfer(account, tokenB_amount),"MP:3");    
 
-        if(isSH){
-            require(token.transfer(_woopSharedFunds, token_amount));
-        }else{
-            require(token.transfer(account, token_amount));    
-        }
-        
-        
-        emit LiquidityWithdraw(account, eth_amount, token_amount, totalLiquidity ,isSH);
-        emit LiquidityChanged(oldLiq, totalLiquidity,isSH);
-        return (eth_amount, token_amount);
+        emit LiquidityWithdraw(account, tka_amount, tokenB_amount, totalLiquidityCOIN );
+        emit LiquidityChanged(oldLiq, totalLiquidityCOIN);
+        return (tka_amount, tokenB_amount);
     }
     
 
+
+    function _withdrawFundsTOKEN( address account, uint256 liquid)  internal returns(uint256,uint256){
+        
+        require(!_isCOIN,"MP:1");
+
+        require( _stakes.StakeExist(account),"MP:!");    
+        
+        uint256 inv_liq;
+        
+        (inv_liq,,)=_stakes.getStake(account);
+
+        require( liquid <= inv_liq ,"MP:3" );
+        
+        uint256 tokenB_reserve = _tokenB.balanceOf(address(this));
+        
+        uint256 tka_amount = liquid.mul( _tokenA.balanceOf(address(this))  ) / totalLiquidityTOKEN;  
+        
+        uint256 tokenB_amount = liquid.mul(tokenB_reserve) / totalLiquidityTOKEN;
+
+        require( tka_amount <= getMyTokensBalance(_erc20A) ,"MP:1" );
+        
+        require( tokenB_amount <= getMyTokensBalance(_erc20B) ,"MP:2" );
+
+        _stakes.substractFromStake(account, liquid);         
+
+        uint256 oldLiq=totalLiquidityTOKEN;
+        
+        totalLiquidityTOKEN = totalLiquidityTOKEN.sub(liquid);
+
+        require(_tokenA.transfer(account, tka_amount),"MP:3");    
+
+        require(_tokenB.transfer(account, tokenB_amount),"MP:4");    
+
+        emit LiquidityWithdraw(account, tka_amount, tokenB_amount, totalLiquidityTOKEN );
+        emit LiquidityChanged(oldLiq, totalLiquidityTOKEN);
+        return (tka_amount, tokenB_amount);
+    }
+
     
-    function WithdrawLiquidity(uint256 liquid, bool isSH) public    returns (uint256, uint256) {
+    function WithdrawLiquidityCOIN(uint256 liquid) public    returns (uint256, uint256) {
+        
+        require(_isCOIN,"MP:1");
         
         require( !isPaused() ,"p");
         
-        require(totalLiquidity>0,"DX:0");
-        
-        IWStaked stk=getSTK(isSH);
-        
-        require( stk.StakeExist(_msgSender()),"DX:!");    
+        require(totalLiquidityCOIN>0,"MP:0");
 
-        return _withdrawFunds( _msgSender(), liquid,isSH);
+        require( _stakes.StakeExist(_msgSender()),"MP:!");    
+
+        return _withdrawFundsCOIN( _msgSender(), liquid);
         
        
     }
 
 
+    function WithdrawLiquidityTOKEN(uint256 liquid) public    returns (uint256, uint256) {
+        
+        require(!_isCOIN,"MP:1");
+        
+        require( !isPaused() ,"p");
+        
+        require(totalLiquidityTOKEN>0,"MP:0");
+
+        require( _stakes.StakeExist(_msgSender()),"MP:!");    
+
+        return _withdrawFundsTOKEN( _msgSender(), liquid);
+        
+       
+    }
 
 
 
