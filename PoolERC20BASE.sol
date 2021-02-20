@@ -66,7 +66,7 @@ contract PoolERC20BASE  is BaseLMH,Owners,PausabledLMH, ReentrancyGuard {
 
 
 
-    function isCOIN() public view returns(bool){
+    function isBNB() public view returns(bool){
         return _isBNBenv;
     }
 
