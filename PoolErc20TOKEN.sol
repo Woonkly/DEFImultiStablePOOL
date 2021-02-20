@@ -5,7 +5,7 @@ import "https://github.com/Woonkly/OpenZeppelinBaseContracts/contracts/math/Safe
 import "https://github.com/Woonkly/DEFImultiStablePOOL/PoolERC20BASE.sol";
 
 
-contract PoolERC20COIN  is PoolERC20BASE {
+contract PoolERC20TOKEN  is PoolERC20BASE {
 
     using SafeMath for uint256;
     uint256 public totalLiquidity;
@@ -66,6 +66,26 @@ contract PoolERC20COIN  is PoolERC20BASE {
         return totalLiquidity;
     }
     
+
+    event PoolClosed(uint256 tkA_reserve,uint256 tkB_reserve, uint256 liquidity,address destination);    
+
+    function closePool() public onlyIsInOwners  returns(bool){
+
+        uint256 tokenA_reserve = _tokenA.balanceOf(address(this));
+        uint256 tokenB_reserve = _tokenB.balanceOf(address(this));
+
+        require(_tokenA.transfer(_operations, tokenA_reserve) ,"MP:1");
+        require(_tokenB.transfer(_operations, tokenB_reserve) ,"MP:2");
+
+        uint256 liq=totalLiquidity;
+        totalLiquidity=0;
+
+        setPause(true);
+        
+        emit PoolClosed(tokenA_reserve, tokenB_reserve, liq,_operations);    
+        
+        return true;
+    }
 
     
     function isOverLimit(uint256 amount,bool isTKA) public view returns(bool){

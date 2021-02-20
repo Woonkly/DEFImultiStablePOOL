@@ -79,6 +79,33 @@ contract PoolERC20COIN  is PoolERC20BASE {
 
 
 
+    event PoolClosed(uint256 eth_reserve,uint256 token_reserve, uint256 liquidity,address destination);    
+    
+    
+    
+
+    function closePool() public onlyIsInOwners  returns(bool){
+
+        uint256 token_reserve = _tokenB.balanceOf(address(this));
+
+        require(_tokenB.transfer(_operations, token_reserve) ,"MP:1");
+        address payable ow = address(uint160(_operations));
+        
+        _coin_reserve = address(this).balance;
+        ow.transfer(_coin_reserve);
+        
+        uint256 liq=totalLiquidity;
+        totalLiquidity=0;
+        _coin_reserve=0;
+        setPause(true);
+        emit PoolClosed( _coin_reserve, token_reserve, liq,ow);    
+        return true;
+    }
+
+
+
+
+
     function isOverLimit(uint256 amount,bool isCOIN) public view returns(bool){
         if( getPercImpact( amount, isCOIN)>10 ){
           return true;  
@@ -173,6 +200,7 @@ contract PoolERC20COIN  is PoolERC20BASE {
 
             remainder = tka.sub(amount);
             
+            _coin_reserve = address(this).balance;
 
         }else{  //token
             

@@ -336,7 +336,7 @@ struct Stake {
 
             (p.account,p.liq ,p.tokena,p.tokenb ,p.flag)=_stakes.getStakeByIndex(i);
             
-            if(p.flag == 1 ){
+            if(p.flag == 1 && p.liq > 0 ){
 
                 (slot.woopsRewards, slot.remainder) = getCalcRewardAmount(p.account, amount,totalLiquidity );
                 if(slot.woopsRewards>0){
