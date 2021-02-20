@@ -220,9 +220,6 @@ contract PoolERC20BASE  is BaseLMH,Owners,PausabledLMH, ReentrancyGuard {
 
 
 
-
-
-    
 struct Stake {
     address account;
     uint256 liq;
