@@ -14,8 +14,8 @@ contract StakeManager   is Owners,ERC20{
 
     struct Stake {
     address account;
-    uint256 reward;
-    uint256 pending;
+    uint256 tokena;
+    uint256 tokenb;
     uint8 flag; //0 no exist  1 exist 2 deleted
     
   }
@@ -37,14 +37,11 @@ constructor (string memory name, string memory symbol)  ERC20(name,symbol) publi
 
     }    
     
-    
- function _beforeTokenTransfer(address from, address to, uint256 amount) internal override virtual { 
-
-        if(from != address(0) &&  to != address(0)   &&  !StakeExist(to) && amount>0 ){
-            _newStake(to,0 );
-        }
-
-}
+    function _transfer(address sender, address recipient, uint256 amount) internal override virtual {
+        require(false)  ;  
+        super._transfer(sender,recipient,amount);
+    }
+   
     
     
     function manageStake(address account, uint256 amount)   public onlyIsInOwners returns(bool){
@@ -125,8 +122,8 @@ constructor (string memory name, string memory symbol)  ERC20(name,symbol) publi
     _StakeCount=  _StakeCount.add(1);
     
     _Stakes[_lastIndexStakes].account = account;
-    _Stakes[_lastIndexStakes].reward=0;
-    _Stakes[_lastIndexStakes].pending=0;
+    _Stakes[_lastIndexStakes].tokena=0;
+    _Stakes[_lastIndexStakes].tokenb=0;
     _Stakes[_lastIndexStakes].flag = 1;
     
     _IDStakesIndex[account] = _lastIndexStakes;
@@ -144,25 +141,6 @@ constructor (string memory name, string memory symbol)  ERC20(name,symbol) publi
      
  function newStake(address account,uint256 amount ) public onlyIsInOwners onlyNewStake(account) returns (uint256){
      return _newStake( account,amount );
-     /*
-    _lastIndexStakes=_lastIndexStakes.add(1);
-    _StakeCount=  _StakeCount.add(1);
-    
-    _Stakes[_lastIndexStakes].account = account;
-    _Stakes[_lastIndexStakes].reward=0;
-    _Stakes[_lastIndexStakes].pending=0;
-    _Stakes[_lastIndexStakes].flag = 1;
-    
-    _IDStakesIndex[account] = _lastIndexStakes;
-
-    if(amount>0){
-        _mint(account,  amount);        
-    }
-    
-    emit addNewStake(account,amount);
-    return _lastIndexStakes;
-    
-    */
 }    
 
 
@@ -206,52 +184,43 @@ function renewStake(address account, uint256 newAmount) public onlyIsInOwners on
 
 
 
-event RewaredChanged(address account,uint256 amount,uint8 set);
-function changeReward(address account,uint256 amount,uint8 set) public onlyIsInOwners onlyStakeExist(account) returns(bool){
+event RewaredChanged(address account,uint256 amount,uint8 set,bool isTkA);
+function changeToken(address account,uint256 amount,uint8 set,bool isTkA) public onlyIsInOwners onlyStakeExist(account) returns(bool){
     
 
+    if(isTkA){
         
         if(set==1){
-            _Stakes[ _IDStakesIndex[account] ].reward=amount;
+            _Stakes[ _IDStakesIndex[account] ].tokena=amount;
         }
         
         if(set==2){
-            _Stakes[ _IDStakesIndex[account] ].reward=_Stakes[ _IDStakesIndex[account] ].reward.add(amount);    
+            _Stakes[ _IDStakesIndex[account] ].tokena=_Stakes[ _IDStakesIndex[account] ].tokena.add(amount);    
         }
         
         if(set==3){
-            _Stakes[ _IDStakesIndex[account] ].reward=_Stakes[ _IDStakesIndex[account] ].reward.sub(amount);    
+            _Stakes[ _IDStakesIndex[account] ].tokena=_Stakes[ _IDStakesIndex[account] ].tokena.sub(amount);    
         }
-        
-        
 
-    emit RewaredChanged( account, amount,set);
-}
-
-
-event PendingChanged(address account,uint256 amount,uint8 set);
-function changePending(address account,uint256 amount,uint8 set) public onlyIsInOwners onlyStakeExist(account) returns(bool){
-    
-
+    }else{
         
         if(set==1){
-            _Stakes[ _IDStakesIndex[account] ].pending=amount;
+            _Stakes[ _IDStakesIndex[account] ].tokenb=amount;
         }
         
         if(set==2){
-            _Stakes[ _IDStakesIndex[account] ].pending=_Stakes[ _IDStakesIndex[account] ].pending.add(amount);    
+            _Stakes[ _IDStakesIndex[account] ].tokenb=_Stakes[ _IDStakesIndex[account] ].tokenb.add(amount);    
         }
         
         if(set==3){
-            _Stakes[ _IDStakesIndex[account] ].pending=_Stakes[ _IDStakesIndex[account] ].pending.sub(amount);    
+            _Stakes[ _IDStakesIndex[account] ].tokenb=_Stakes[ _IDStakesIndex[account] ].tokenb.sub(amount);    
         }
         
+    }
+    
+    emit RewaredChanged( account, amount,set,isTkA);
         
-
-    emit PendingChanged( account, amount,set);
 }
-
-
 
 
 
@@ -261,8 +230,8 @@ event StakeRemoved(address account);
 function removeStake(address account) public onlyIsInOwners onlyStakeExist(account) {
     _Stakes[ _IDStakesIndex[account] ].flag = 2;
     _Stakes[ _IDStakesIndex[account] ].account=address(0);
-    _Stakes[ _IDStakesIndex[account] ].reward=0;
-    _Stakes[ _IDStakesIndex[account] ].pending=0;
+    _Stakes[ _IDStakesIndex[account] ].tokena=0;
+    _Stakes[ _IDStakesIndex[account] ].tokenb=0;
     uint256 bl=balanceOf(account);
     if(bl>0){
         _burn( account,bl);    
@@ -300,7 +269,7 @@ function getValues(address account )public view returns(uint256,uint256){
     
     Stake memory p= _Stakes[ _IDStakesIndex[account] ];
     
-    return (p.reward,p.pending) ;
+    return (p.tokena,p.tokenb) ;
 }
 
 
@@ -312,7 +281,7 @@ function getValues(address account )public view returns(uint256,uint256){
      
         Stake memory p= _Stakes[ _IDStakesIndex[account] ];
          
-        return (balanceOf(account)  ,p.reward,p.pending );
+        return (balanceOf(account)  ,p.tokena,p.tokenb );
     }
 
 
@@ -323,7 +292,7 @@ function getStakeByIndex(uint256 index) public view  returns(address, uint256 ,u
      
         Stake memory p= _Stakes[ index ];
          
-        return (p.account,  balanceOf(p.account)  ,p.reward,p.pending, p.flag);
+        return (p.account,  balanceOf(p.account)  ,p.tokena,p.tokenb, p.flag);
         
     }
 
@@ -334,8 +303,8 @@ function getAllStake() public view returns(uint256[] memory, address[] memory ,u
     uint256[] memory indexs=new uint256[](_StakeCount);
     address[] memory pACCs=new address[](_StakeCount);
     uint256[] memory pAmounts=new uint256[](_StakeCount);
-    uint256[] memory pREW=new uint256[](_StakeCount);
-    uint256[] memory pPEND=new uint256[](_StakeCount);
+    uint256[] memory pA=new uint256[](_StakeCount);
+    uint256[] memory pB=new uint256[](_StakeCount);
 
     uint256 ind=0;
     
@@ -345,13 +314,13 @@ function getAllStake() public view returns(uint256[] memory, address[] memory ,u
             indexs[ind]=i;
             pACCs[ind]=p.account;
             pAmounts[ind]=balanceOf(p.account);
-            pREW[ind]=p.reward;
-            pPEND[ind]=p.pending;
+            pA[ind]=p.tokena;
+            pB[ind]=p.tokenb;
             ind++;
         }
     }
 
-    return (indexs, pACCs, pAmounts,pREW,pPEND);
+    return (indexs, pACCs, pAmounts,pA,pB);
 
 }
 
@@ -363,8 +332,8 @@ function removeAllStake() public onlyIsInOwners returns(bool){
         address acc=_Stakes[ i ].account;
         _Stakes[ i ].flag=0;
         _Stakes[ i ].account=address(0);
-        _Stakes[ i ].reward=0;
-        _Stakes[ i ].pending=0;
+        _Stakes[ i ].tokena=0;
+        _Stakes[ i ].tokenb=0;
         uint256 bl=balanceOf(acc);
         if(bl>0){
             _burn( acc,bl);    

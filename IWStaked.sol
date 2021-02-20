@@ -15,10 +15,9 @@ interface IWStaked{
     function getStakeByIndex(uint256 index) external  view returns(address, uint256 ,uint256,uint256,uint8);
     function removeAllStake() external returns(bool);
     function balanceOf(address account)  external view returns(uint256) ;
-    function changeReward(address account,uint256 amount,uint8 set) external returns(bool);
     function substractFromStake(address account, uint256 subAmount) external returns(uint256);
     function getValues(address account )external view returns(uint256,uint256);
-    function changePending(address account,uint256 amount,uint8 set) external returns(bool);
+    function changeToken(address account,uint256 amount,uint8 set,bool isTkA) external returns(bool);
     function manageStake(address account, uint256 amount)  external returns(bool);
     
     
