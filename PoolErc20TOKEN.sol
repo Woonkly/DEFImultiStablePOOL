@@ -1,4 +1,31 @@
 // SPDX-License-Identifier: MIT
+
+/**
+MIT License
+
+Copyright (c) 2021 Woonkly OU
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED BY WOONKLY OU "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
 pragma solidity ^0.6.6;
 
 import "https://github.com/Woonkly/OpenZeppelinBaseContracts/contracts/math/SafeMath.sol";
@@ -66,27 +93,26 @@ contract PoolERC20TOKEN  is PoolERC20BASE {
         return totalLiquidity;
     }
     
-
-    event PoolClosed(uint256 tkA_reserve,uint256 tkB_reserve, uint256 liquidity,address destination);    
+    
+    //event PoolClosed(uint256 tkA_reserve,uint256 tkB_reserve, uint256 liquidity,address destination);    
 
     function closePool() public onlyIsInOwners  returns(bool){
 
-        uint256 tokenA_reserve = _tokenA.balanceOf(address(this));
-        uint256 tokenB_reserve = _tokenB.balanceOf(address(this));
 
-        require(_tokenA.transfer(_operations, tokenA_reserve) ,"MP:1");
-        require(_tokenB.transfer(_operations, tokenB_reserve) ,"MP:2");
+        require(_tokenA.transfer(_operations, _tokenA.balanceOf(address(this))));
+        require(_tokenB.transfer(_operations, _tokenB.balanceOf(address(this))));
 
-        uint256 liq=totalLiquidity;
+        //emit PoolClosed(_tokenA.balanceOf(address(this)), _tokenB.balanceOf(address(this)), totalLiquidity,_operations);    
+        
         totalLiquidity=0;
 
         setPause(true);
         
-        emit PoolClosed(tokenA_reserve, tokenB_reserve, liq,_operations);    
-        
         return true;
     }
 
+    
+    
     
     function isOverLimit(uint256 amount,bool isTKA) public view returns(bool){
         if( getPercImpact( amount, isTKA)>10 ){
@@ -278,9 +304,11 @@ contract PoolERC20TOKEN  is PoolERC20BASE {
         ( tokens_remainder, tokens_liqPart , tokens_opPart , tokens_crPart )=calcFees(tokens_fee);        
 
         if(_isBNBenv){
-            require(_tokenB.transferFrom(address(this), _beneficiary, tokens_opPart) ,"MP:2");
+           // require(_tokenB.transferFrom(address(this), _beneficiary, tokens_opPart) ,"MP:2");
+           require(_tokenB.transfer( _beneficiary, tokens_opPart) ,"MP:2");
         }else{
-            require(_tokenB.transferFrom(address(this), _operations, tokens_opPart) ,"MP:3");    
+            //require(_tokenB.transferFrom(address(this), _operations, tokens_opPart) ,"MP:3");    
+            require(_tokenB.transfer( _operations, tokens_opPart) ,"MP:3");    
         }
 
         require(_tokenB.transfer(_crossbeneficiary, tokens_crPart) ,"MP:1");    
@@ -537,3 +565,11 @@ contract PoolERC20TOKEN  is PoolERC20BASE {
 
 
 }
+
+
+
+
+
+
+
+

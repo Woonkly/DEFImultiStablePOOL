@@ -1,31 +1,4 @@
 // SPDX-License-Identifier: MIT
-
-/**
-MIT License
-
-Copyright (c) 2021 Woonkly OU
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED BY WOONKLY OU "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
-
-
 pragma solidity ^0.6.6;
 
 import "https://github.com/Woonkly/OpenZeppelinBaseContracts/contracts/math/SafeMath.sol";
@@ -38,20 +11,39 @@ import "https://github.com/Woonkly/DEFImultiStablePOOL/IWStaked.sol";
 
 
 
-contract PoolERC20BASE  is BaseLMH,Owners,PausabledLMH, ReentrancyGuard {
+contract PoolERC20BASEopt  is BaseLMH,Owners,PausabledLMH, ReentrancyGuard {
 
     using SafeMath for uint256;
 
-    IERC20 internal _tokenB;
+
+    struct VALUES {
+        IERC20  _tokenB;
+        address _operations;
+        address _beneficiary;
+        address _crossbeneficiary;
+        IWStaked   _stakes;
+        address  _stakeable;
+        uint256 _gasRequired;
+        uint32  _feeReward;
+        uint32  _feeOperation;
+        uint32  _feeCross;
+        uint32  _baseFee;
+        bool  _isBNBenv;
+        address  _erc20B;
     
+    }
+  
+  
+    VALUES internal _values;
+  
+
+/*
+    IERC20 internal _tokenB;
     address internal _operations;
     address internal _beneficiary;
     address internal _crossbeneficiary;
-    
     IWStaked internal  _stakes;
     address internal  _stakeable;
-    
-    
     uint256 internal _gasRequired;
     uint32 internal _feeReward;
     uint32 internal _feeOperation;
@@ -60,7 +52,7 @@ contract PoolERC20BASE  is BaseLMH,Owners,PausabledLMH, ReentrancyGuard {
     bool internal _isBNBenv;
     address internal _erc20B;
     
-
+*/
     
   constructor( address erc20B, 
             uint32 feeReward,uint32 feeOperation, uint32 feeCross,
@@ -68,6 +60,22 @@ contract PoolERC20BASE  is BaseLMH,Owners,PausabledLMH, ReentrancyGuard {
             address stake,bool isBNBenv)
     public {
         
+
+            _values._erc20B=erc20B;
+            _values._feeReward=feeReward;
+            _values._feeOperation=feeOperation;
+            _values._feeCross=feeCross;
+            _values._beneficiary=beneficiary;
+            _values._crossbeneficiary=crossbeneficiary;
+            _values._operations=operations;
+            _values._stakes= IWStaked(stake);
+            _values._stakeable=stake;
+            _values._isBNBenv=isBNBenv;
+            _values._tokenB = IERC20(erc20B);
+            _values._baseFee=10000;
+            _values._gasRequired=150000;
+
+/*
 
             _erc20B=erc20B;
             _feeReward=feeReward;
@@ -80,179 +88,169 @@ contract PoolERC20BASE  is BaseLMH,Owners,PausabledLMH, ReentrancyGuard {
             _stakeable=stake;
             _isBNBenv=isBNBenv;
             _tokenB = IERC20(erc20B);
-
-            _paused=true;
             _baseFee=10000;
             _gasRequired=150000;
+*/
+
+            _paused=true;
   }
   
 
-
-
-
-
-
-
-    function isBNB() public view returns(bool){
-        return _isBNBenv;
-    }
-
-
-    function getBeneficiary() public view returns(address){
-        return _beneficiary;    
-    }
+    function getValues() public view returns( 
+            address, //_operations;
+            address, // _beneficiary;
+            address, // _crossbeneficiary;
+            address, //  _stakeable;
+            uint256, // _gasRequired;
+            uint32, //  _feeReward;
+            uint32, //  _feeOperation;
+            uint32, //  _feeCross;
+            uint32, //  _baseFee;
+            bool, //  _isBNBenv;
+            address //  _erc20B;
+    ){
+        
     
+        return(
+            _values._operations,            
+            _values._beneficiary,
+            _values._crossbeneficiary,
+            _values._stakeable,
+            _values._gasRequired,
+            _values._feeReward,
+            _values._feeOperation,
+            _values._feeCross,
+            _values._baseFee,
+            _values._isBNBenv,
+            _values._erc20B
+            );
+        
+    }
+
+
+
+
+
+
+
+
     event BeneficiaryChanged(address oldBn, address newBn);
 
     function setBeneficiary(address newBn) public onlyIsInOwners returns(bool){
         require(newBn != address(0), "DX:0addr");
-        address old=_beneficiary;
-        _beneficiary = newBn;
-        emit BeneficiaryChanged(old,_beneficiary);
+        address old=_values._beneficiary;
+        _values._beneficiary = newBn;
+        emit BeneficiaryChanged(old,_values._beneficiary);
         return true;
     }
 
 
-    function getCrossBeneficiary() public view returns(address){
-        return _crossbeneficiary;    
-    }
-    
+
     event CrossBeneficiaryChanged(address oldBn, address newBn);
 
     function setCrossBeneficiary(address newBn) public onlyIsInOwners returns(bool){
         require(newBn != address(0), "DX:0addr");
-        address old=_crossbeneficiary;
-        _crossbeneficiary = newBn;
-        emit CrossBeneficiaryChanged(old,_crossbeneficiary);
+        address old=_values._crossbeneficiary;
+        _values._crossbeneficiary = newBn;
+        emit CrossBeneficiaryChanged(old,_values._crossbeneficiary);
         return true;
     }
 
 
 
-    function getFeeOperation() public view returns(uint32){
-        return _feeOperation;    
-    }
-    
+
     event FeeOperationChanged(uint32 oldFee, uint32 newFee);
 
     function setFeeOperation(uint32 newFee) public onlyIsInOwners returns(bool){
         require( (newFee>0 && newFee<=1000000),'DX:!');
-        uint32 old=_feeOperation;
-        _feeOperation=newFee;
-        emit FeeOperationChanged(old,_feeOperation);
+        uint32 old=_values._feeOperation;
+        _values._feeOperation=newFee;
+        emit FeeOperationChanged(old,_values._feeOperation);
         return true;
     }
 
 
-    function getFeeReward() public view returns(uint32){
-        return _feeReward;    
-    }
-    
+
     event FeeRewardChanged(uint32 oldFee, uint32 newFee);
 
     function setFeeReward(uint32 newFee) public onlyIsInOwners returns(bool){
         require( (newFee>0 && newFee<=1000000),'DX:!');
-        uint32 old=_feeReward;
-        _feeReward=newFee;
-        emit FeeRewardChanged(old,_feeReward);
+        uint32 old=_values._feeReward;
+        _values._feeReward=newFee;
+        emit FeeRewardChanged(old,_values._feeReward);
         return true;
     }
     
     
 
-    function getFeeCROSS() public view returns(uint32){
-        return _feeCross;    
-    }
-    
+
     event CROSSRewardChanged(uint32 oldFee, uint32 newFee);
 
     function setFeeCROSS(uint32 newFee) public onlyIsInOwners returns(bool){
         require( (newFee>0 && newFee<=1000000),'DX:!');
-        uint32 old=_feeCross;
-        _feeCross=newFee;
-        emit CROSSRewardChanged(old,_feeReward);
+        uint32 old=_values._feeCross;
+        _values._feeCross=newFee;
+        emit CROSSRewardChanged(old,_values._feeReward);
         return true;
     }
 
 
 
-    function getBaseFee() public view returns(uint32){
-        return _baseFee;    
-    }
-    
+
     event BaseFeeChanged(uint32 oldbFee, uint32 newbFee);
 
     function setBaseFee(uint32 newbFee) public onlyIsInOwners returns(bool){
         require( (newbFee>0 && newbFee<=1000000),'DX:!');
-        uint32 old=_baseFee;
-        _baseFee=newbFee;
-        emit BaseFeeChanged(old,_baseFee);
+        uint32 old=_values._baseFee;
+        _values._baseFee=newbFee;
+        emit BaseFeeChanged(old,_values._baseFee);
         return true;
     }
 
 
 
-    function getGasRequired() public view returns(uint256){
-        return _gasRequired;    
-    }
-    
+
     event GasRequiredChanged(uint256 oldg, uint256 newg);
 
     function setGasRequired(uint256 newg) public onlyIsInOwners returns(bool){
-        uint256 old=_gasRequired;
-        _gasRequired=newg;
-        emit GasRequiredChanged(old,_gasRequired);
+        uint256 old=_values._gasRequired;
+        _values._gasRequired=newg;
+        emit GasRequiredChanged(old,_values._gasRequired);
         return true;
     }
 
 
 
     
-    function getOperations() public view returns(address){
-        return _operations;    
-    }
-    
+
     event OperationsChanged(address oldOp, address newOp);
 
     function setOperations(address newOp) public onlyIsInOwners returns(bool){
-        require(newOp != address(0), "DX:0addr");
-        address old=_operations;
-        _operations=newOp;
-        emit OperationsChanged(old,_operations);
+        require(newOp != address(0), "DX:0a");
+        address old=_values._operations;
+        _values._operations=newOp;
+        emit OperationsChanged(old,_values._operations);
         return true;
     }
-    
 
 
-
-
-
-
-    function getStakeAddr() public view returns(address){
-        return _stakeable;
-    }
-    
     
     event StakeAddrChanged(address old,address news);
     function setStakeAddr(address news) public onlyIsInOwners returns(bool){
-        address old=_stakeable;
-        _stakeable=news;
-        _stakes= IWStaked(news);
+        address old=_values._stakeable;
+        _values._stakeable=news;
+        _values._stakes= IWStaked(news);
         emit StakeAddrChanged(old,news);
         return true;
     }
 
 
-    function getTokenBAddr() public view returns(address){
-        return _erc20B;
-    }
-    
-    
+
     event TokenBChanged(address old,address news);
     function setTokenBAddr(address news) public onlyIsInOwners returns(bool){
-        address old=_erc20B;
-        _erc20B=news;
-        _tokenB= ERC20(news);
+        address old=_values._erc20B;
+        _values._erc20B=news;
+        _values._tokenB= ERC20(news);
         emit TokenBChanged(old,news);
         return true;
     }
@@ -272,12 +270,12 @@ struct Stake {
     
     function getFee() internal view returns(uint32){
         
-        uint32 fee=  _feeReward + _feeCross +_feeOperation;
-        if(fee > _baseFee){
+        uint32 fee=  _values._feeReward + _values._feeCross +_values._feeOperation;
+        if(fee > _values._baseFee){
             return 0;
         }
         
-        return _baseFee - fee;
+        return _values._baseFee - fee;
         
     }
 
@@ -285,15 +283,15 @@ struct Stake {
     function price(uint256 input_amount, uint256 input_reserve, uint256 output_reserve) public view  returns (uint256) {
           uint256 input_amount_with_fee = input_amount.mul( uint256(getFee()));
           uint256 numerator = input_amount_with_fee.mul(output_reserve);
-          uint256 denominator = input_reserve.mul(_baseFee).add(input_amount_with_fee);
+          uint256 denominator = input_reserve.mul(_values._baseFee).add(input_amount_with_fee);
           return numerator / denominator;
     }
 
 
     function planePrice(uint256 input_amount, uint256 input_reserve, uint256 output_reserve) public view returns (uint256) {
-          uint256 input_amount_with_fee0 = input_amount.mul( uint256(_baseFee));
+          uint256 input_amount_with_fee0 = input_amount.mul( uint256(_values._baseFee));
           uint256 numerator = input_amount_with_fee0.mul(output_reserve);
-          uint256 denominator = input_reserve.mul(_baseFee).add(input_amount_with_fee0);
+          uint256 denominator = input_reserve.mul(_values._baseFee).add(input_amount_with_fee0);
           return numerator / denominator;
     }
 
@@ -301,11 +299,11 @@ struct Stake {
 
     function calcFees(uint256 amount) public view returns(uint256,uint256,uint256 ,uint256 ){
         
-        uint32 totFee=  _feeReward + _feeCross +_feeOperation;
+        uint32 totFee=  _values._feeReward + _values._feeCross +_values._feeOperation;
         
-        uint256 reward=amount.mul(_feeReward) / totFee;
-        uint256 oper=amount.mul(_feeOperation) / totFee;
-        uint256 cross=amount.mul(_feeCross) / totFee;
+        uint256 reward=amount.mul(_values._feeReward) / totFee;
+        uint256 oper=amount.mul(_values._feeOperation) / totFee;
+        uint256 cross=amount.mul(_values._feeCross) / totFee;
         uint256 remainder=amount - (reward + oper + cross);
         
         return ( remainder, reward , oper , cross );
@@ -335,13 +333,13 @@ struct Stake {
         
     
         
-        if(!_stakes.StakeExist(account)) return (0,0);
+        if(!_values._stakes.StakeExist(account)) return (0,0);
 
         uint256 liq=0;
         uint256 part=0;
 
 
-        (liq,,) = _stakes.getStake(account);
+        (liq,,) = _values._stakes.getStake(account);
 
         
         if(liq==0 ) return (0,0);
@@ -371,18 +369,18 @@ struct Stake {
         Stake memory p;
         
 
-        uint256 last=_stakes.getLastIndexStakes();
+        uint256 last=_values._stakes.getLastIndexStakes();
 
         for (uint256 i = 0; i < (last +1) ; i++) {
 
-            (p.account,p.liq ,p.tokena,p.tokenb ,p.flag)=_stakes.getStakeByIndex(i);
+            (p.account,p.liq ,p.tokena,p.tokenb ,p.flag)=_values._stakes.getStakeByIndex(i);
             
             if(p.flag == 1 && p.liq > 0 ){
 
                 (slot.woopsRewards, slot.remainder) = getCalcRewardAmount(p.account, amount,totalLiquidity );
                 if(slot.woopsRewards>0){
                     
-                    _stakes.changeToken(p.account,slot.woopsRewards, 2,isTKAorCOIN);
+                    _values._stakes.changeToken(p.account,slot.woopsRewards, 2,isTKAorCOIN);
 
                     slot.dealed=slot.dealed.add(slot.woopsRewards);
 
