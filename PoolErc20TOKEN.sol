@@ -49,12 +49,14 @@ contract PoolERC20TOKEN is PoolERC20BASE {
         uint256 token_amountA,
         uint256 token_amountB
     );
+
     event PoolClosed(
         uint256 tkA_reserve,
         uint256 tkB_reserve,
         uint256 liquidity,
         address destination
     );
+
     event PurchasedTokens(
         address purchaser,
         uint256 coins,
@@ -257,26 +259,10 @@ contract PoolERC20TOKEN is PoolERC20BASE {
 
         require(_stakes.StakeExist(_msgSender()), "MP:!");
 
-        _withdrawReward(_msgSender(), amount, isTKA);
-
-        return true;
-    }
-
-    function _withdrawReward(
-        address account,
-        uint256 amount,
-        bool isTKA
-    ) internal nonReentrant returns (bool) {
-        require(!isPaused(), "p");
-
-        if (!_stakes.StakeExist(account)) {
-            return false;
-        }
-
         uint256 tka = 0;
         uint256 tkb = 0;
 
-        (tka, tkb) = _stakes.getValues(account);
+        (tka, tkb) = _stakes.getValues(_msgSender());
 
         uint256 remainder = 0;
 
@@ -285,7 +271,7 @@ contract PoolERC20TOKEN is PoolERC20BASE {
 
             require(amount <= getMyTokensBalance(_erc20A), "MP:-tk");
 
-            require(_tokenA.transfer(account, amount), "MP:5");
+            require(_tokenA.transfer(_msgSender(), amount), "MP:5");
 
             remainder = tka.sub(amount);
         } else {
@@ -295,12 +281,12 @@ contract PoolERC20TOKEN is PoolERC20BASE {
 
             require(amount <= getMyTokensBalance(_erc20B), "DX:-tk");
 
-            require(_tokenB.transfer(account, amount), "DX:5");
+            require(_tokenB.transfer(_msgSender(), amount), "DX:5");
 
             remainder = tkb.sub(amount);
         }
 
-        return _stakes.changeToken(account, remainder, 1, isTKA);
+        return _stakes.changeToken(_msgSender(), remainder, 1, isTKA);
     }
 
     function getCalcRewardAmount(address account, uint256 amount)
@@ -604,16 +590,19 @@ contract PoolERC20TOKEN is PoolERC20BASE {
         return (inv, tka_amount, tokenB_amount);
     }
 
-    function _withdrawFunds(address account, uint256 liquid)
-        internal
-        nonReentrant
+    function WithdrawLiquidity(uint256 liquid)
+        external
         returns (uint256, uint256)
     {
-        require(_stakes.StakeExist(account), "MP:!");
+        require(!isPaused(), "p");
+
+        require(totalLiquidity > 0, "MP:0");
+
+        require(_stakes.StakeExist(_msgSender()), "MP:!");
 
         uint256 inv_liq;
 
-        (inv_liq, , ) = _stakes.getStake(account);
+        (inv_liq, , ) = _stakes.getStake(_msgSender());
 
         require(liquid <= inv_liq, "MP:3");
 
@@ -628,36 +617,23 @@ contract PoolERC20TOKEN is PoolERC20BASE {
 
         require(tokenB_amount <= getMyTokensBalance(_erc20B), "MP:2");
 
-        _stakes.substractFromStake(account, liquid);
+        _stakes.substractFromStake(_msgSender(), liquid);
 
         uint256 oldLiq = totalLiquidity;
 
         totalLiquidity = totalLiquidity.sub(liquid);
 
-        require(_tokenA.transfer(account, tka_amount), "MP:3");
+        require(_tokenA.transfer(_msgSender(), tka_amount), "MP:3");
 
-        require(_tokenB.transfer(account, tokenB_amount), "MP:4");
+        require(_tokenB.transfer(_msgSender(), tokenB_amount), "MP:4");
 
         emit LiquidityWithdraw(
-            account,
+            _msgSender(),
             tka_amount,
             tokenB_amount,
             totalLiquidity
         );
         emit LiquidityChanged(oldLiq, totalLiquidity);
         return (tka_amount, tokenB_amount);
-    }
-
-    function WithdrawLiquidity(uint256 liquid)
-        external
-        returns (uint256, uint256)
-    {
-        require(!isPaused(), "p");
-
-        require(totalLiquidity > 0, "MP:0");
-
-        require(_stakes.StakeExist(_msgSender()), "MP:!");
-
-        return _withdrawFunds(_msgSender(), liquid);
     }
 }
