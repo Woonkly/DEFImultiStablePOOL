@@ -127,7 +127,7 @@ contract PoolERC20TOKEN is PoolERC20BASE {
         onlyIsInOwners
         returns (bool)
     {
-        require(news != address(0), "!0");
+        require(news != address(0), "0");
         address old = _erc20A;
         _erc20A = news;
         _tokenA = ERC20(news);
@@ -142,16 +142,16 @@ contract PoolERC20TOKEN is PoolERC20BASE {
     {
         require(
             _tokenA.allowance(_msgSender(), address(this)) >= tokenA_amount,
-            "!aptk"
+            "1"
         );
         require(
             _tokenB.allowance(_msgSender(), address(this)) >= tokenB_amount,
-            "!aptk"
+            "2"
         );
 
-        require(!_stakes.StakeExist(_msgSender()), "DX:!");
+        require(!_stakes.StakeExist(_msgSender()), "3");
 
-        require(totalLiquidity == 0, "DEX:i");
+        require(totalLiquidity == 0, "4");
 
         totalLiquidity = tokenA_amount;
 
@@ -174,19 +174,15 @@ contract PoolERC20TOKEN is PoolERC20BASE {
         return totalLiquidity;
     }
 
-    function closePool() external nonReentrant onlyIsInOwners returns (bool) {
+    function closePool() external  onlyIsInOwners returns (bool) {
+        
+
         require(
             _tokenA.transfer(_operations, _tokenA.balanceOf(address(this)))
         );
+       
         require(
             _tokenB.transfer(_operations, _tokenB.balanceOf(address(this)))
-        );
-
-        emit PoolClosed(
-            _tokenA.balanceOf(address(this)),
-            _tokenB.balanceOf(address(this)),
-            totalLiquidity,
-            _operations
         );
 
         totalLiquidity = 0;
@@ -195,6 +191,7 @@ contract PoolERC20TOKEN is PoolERC20BASE {
 
         return true;
     }
+
 
     function isOverLimit(uint256 amount, bool isTKA)
         public
@@ -221,9 +218,8 @@ contract PoolERC20TOKEN is PoolERC20BASE {
 
         if (p <= 100) {
             return uint8(p);
-        } else {
-            return uint8(100);
         }
+        return uint8(100);
     }
 
     function getMaxAmountSwap() public view returns (uint256, uint256) {
@@ -257,7 +253,7 @@ contract PoolERC20TOKEN is PoolERC20BASE {
     {
         require(!isPaused(), "p");
 
-        require(_stakes.StakeExist(_msgSender()), "MP:!");
+        require(_stakes.StakeExist(_msgSender()), "1");
 
         uint256 tka = 0;
         uint256 tkb = 0;
@@ -267,21 +263,21 @@ contract PoolERC20TOKEN is PoolERC20BASE {
         uint256 remainder = 0;
 
         if (isTKA) {
-            require(amount <= tka, "MP:1");
+            require(amount <= tka, "2");
 
-            require(amount <= getMyTokensBalance(_erc20A), "MP:-tk");
+            require(amount <= getMyTokensBalance(_erc20A), "3");
 
-            require(_tokenA.transfer(_msgSender(), amount), "MP:5");
+            require(_tokenA.transfer(_msgSender(), amount), "4");
 
             remainder = tka.sub(amount);
         } else {
             //token
 
-            require(amount <= tkb, "MP:amew");
+            require(amount <= tkb, "5");
 
-            require(amount <= getMyTokensBalance(_erc20B), "DX:-tk");
+            require(amount <= getMyTokensBalance(_erc20B), "6");
 
-            require(_tokenB.transfer(_msgSender(), amount), "DX:5");
+            require(_tokenB.transfer(_msgSender(), amount), "7");
 
             remainder = tkb.sub(amount);
         }
@@ -301,15 +297,9 @@ contract PoolERC20TOKEN is PoolERC20BASE {
 
         (liq, , ) = _stakes.getStake(account);
 
-        if (liq == 0) return (0, 0);
-
         part = liq * amount.div(totalLiquidity);
 
-        if (part == 0) return (0, 0);
-
-        uint256 remainder = amount - part;
-
-        return (part, remainder);
+        return (part, amount - part);
     }
 
     function sellTokenB(uint256 tka_amount)
@@ -319,9 +309,9 @@ contract PoolERC20TOKEN is PoolERC20BASE {
     {
         require(!isPaused(), "p");
 
-        require(totalLiquidity > 0, "MP:0");
+        require(totalLiquidity > 0, "1");
 
-        require(!isOverLimit(tka_amount, true), "MP:c");
+        require(!isOverLimit(tka_amount, true), "2");
 
         uint256 tokenb_reserve = _tokenB.balanceOf(address(this));
 
@@ -331,16 +321,16 @@ contract PoolERC20TOKEN is PoolERC20BASE {
         uint256 tokens_bought0fee =
             planePrice(tka_amount, getMyTokensBalance(_erc20A), tokenb_reserve);
 
-        require(tokens_bought <= getMyTokensBalance(_erc20B), "MP:a");
+        require(tokens_bought <= getMyTokensBalance(_erc20B), "3");
 
         require(
             _tokenA.allowance(_msgSender(), address(this)) >= tka_amount,
-            "!aptk"
+            "4"
         );
 
         require(_tokenA.transferFrom(_msgSender(), address(this), tka_amount));
 
-        require(_tokenB.transfer(_msgSender(), tokens_bought), "MP:b");
+        require(_tokenB.transfer(_msgSender(), tokens_bought), "5");
 
         emit PurchasedTokens(_msgSender(), tka_amount, tokens_bought);
 
@@ -359,12 +349,12 @@ contract PoolERC20TOKEN is PoolERC20BASE {
         ) = calcFees(tokens_fee);
 
         if (_isBNBenv) {
-            require(_tokenB.transfer(_beneficiary, tokens_opPart), "MP:2");
+            require(_tokenB.transfer(_beneficiary, tokens_opPart), "6");
         } else {
-            require(_tokenB.transfer(_operations, tokens_opPart), "MP:3");
+            require(_tokenB.transfer(_operations, tokens_opPart), "7");
         }
 
-        require(_tokenB.transfer(_crossbeneficiary, tokens_crPart), "MP:1");
+        require(_tokenB.transfer(_crossbeneficiary, tokens_crPart), "8");
 
         processRewardInfo memory slot;
 
@@ -386,7 +376,7 @@ contract PoolERC20TOKEN is PoolERC20BASE {
         uint256 leftover = tokens_liqPart.sub(slot.dealed);
 
         if (leftover > 0) {
-            require(_tokenB.transfer(_operations, leftover), "MP:4");
+            require(_tokenB.transfer(_operations, leftover), "9");
             emit NewLeftover(_operations, leftover, false);
         }
 
@@ -405,9 +395,9 @@ contract PoolERC20TOKEN is PoolERC20BASE {
             "!aptk"
         );
 
-        require(totalLiquidity > 0, "MP:0");
+        require(totalLiquidity > 0, "1");
 
-        require(!isOverLimit(tokenb_amount, false), "MP:c");
+        require(!isOverLimit(tokenb_amount, false), "2");
 
         uint256 tokenb_reserve = _tokenB.balanceOf(address(this));
 
@@ -425,13 +415,13 @@ contract PoolERC20TOKEN is PoolERC20BASE {
                 _tokenA.balanceOf(address(this))
             );
 
-        require(tka_bought <= getMyTokensBalance(_erc20A), "MP:!");
+        require(tka_bought <= getMyTokensBalance(_erc20A), "3");
 
-        require(_tokenA.transfer(_msgSender(), tka_bought), "MP:b");
+        require(_tokenA.transfer(_msgSender(), tka_bought), "4");
 
         require(
             _tokenB.transferFrom(_msgSender(), address(this), tokenb_amount),
-            "MP:2"
+            "5"
         );
 
         emit TokensSold(_msgSender(), tka_bought, tokenb_amount);
@@ -448,12 +438,12 @@ contract PoolERC20TOKEN is PoolERC20BASE {
         );
 
         if (_isBNBenv) {
-            require(_tokenA.transfer(_beneficiary, tka_opPart), "MP:c");
+            require(_tokenA.transfer(_beneficiary, tka_opPart), "6");
         } else {
-            require(_tokenA.transfer(_operations, tka_opPart), "MP:d");
+            require(_tokenA.transfer(_operations, tka_opPart), "7");
         }
 
-        require(_tokenA.transfer(_crossbeneficiary, tka_crPart), "MP:e");
+        require(_tokenA.transfer(_crossbeneficiary, tka_crPart), "8");
 
         processRewardInfo memory slot;
 
@@ -475,7 +465,7 @@ contract PoolERC20TOKEN is PoolERC20BASE {
         uint256 leftover = tka_liqPart.sub(slot.dealed);
 
         if (leftover > 0) {
-            require(_tokenA.transfer(_operations, leftover), "MP:f");
+            require(_tokenA.transfer(_operations, leftover), "9");
 
             emit NewLeftover(_operations, leftover, true);
         }
@@ -507,12 +497,12 @@ contract PoolERC20TOKEN is PoolERC20BASE {
         require(
             _msgSender() != address(0) &&
                 _tokenB.allowance(_msgSender(), address(this)) >= tokenB_amount,
-            "MP:1"
+            "1"
         );
 
         require(
             _tokenA.allowance(_msgSender(), address(this)) >= tokenA_amount,
-            "MP:2"
+            "2"
         );
 
         uint256 liquidity_minted =
@@ -596,15 +586,15 @@ contract PoolERC20TOKEN is PoolERC20BASE {
     {
         require(!isPaused(), "p");
 
-        require(totalLiquidity > 0, "MP:0");
+        require(totalLiquidity > 0, "1");
 
-        require(_stakes.StakeExist(_msgSender()), "MP:!");
+        require(_stakes.StakeExist(_msgSender()), "2");
 
         uint256 inv_liq;
 
         (inv_liq, , ) = _stakes.getStake(_msgSender());
 
-        require(liquid <= inv_liq, "MP:3");
+        require(liquid <= inv_liq, "3");
 
         uint256 tokenB_reserve = _tokenB.balanceOf(address(this));
 
@@ -613,9 +603,9 @@ contract PoolERC20TOKEN is PoolERC20BASE {
 
         uint256 tokenB_amount = liquid.mul(tokenB_reserve).div(totalLiquidity);
 
-        require(tka_amount <= getMyTokensBalance(_erc20A), "MP:1");
+        require(tka_amount <= getMyTokensBalance(_erc20A), "4");
 
-        require(tokenB_amount <= getMyTokensBalance(_erc20B), "MP:2");
+        require(tokenB_amount <= getMyTokensBalance(_erc20B), "5");
 
         _stakes.substractFromStake(_msgSender(), liquid);
 
@@ -623,9 +613,9 @@ contract PoolERC20TOKEN is PoolERC20BASE {
 
         totalLiquidity = totalLiquidity.sub(liquid);
 
-        require(_tokenA.transfer(_msgSender(), tka_amount), "MP:3");
+        require(_tokenA.transfer(_msgSender(), tka_amount), "6");
 
-        require(_tokenB.transfer(_msgSender(), tokenB_amount), "MP:4");
+        require(_tokenB.transfer(_msgSender(), tokenB_amount), "7");
 
         emit LiquidityWithdraw(
             _msgSender(),
