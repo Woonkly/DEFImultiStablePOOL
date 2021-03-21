@@ -136,14 +136,14 @@ contract PoolERC20COIN is PoolERC20BASE {
     {
         require(
             _tokenB.allowance(_msgSender(), address(this)) >= token_amount,
-            "!aptk"
+            "1"
         );
 
-        require(!_stakes.StakeExist(_msgSender()), "DX:!");
+        require(!_stakes.StakeExist(_msgSender()), "2");
 
-        require(totalLiquidity == 0, "MP:i");
+        require(totalLiquidity == 0, "3");
 
-        require(msg.value > 0, "DX:I");
+        require(msg.value > 0, "4");
 
         totalLiquidity = address(this).balance;
         _coin_reserve = totalLiquidity;
@@ -163,7 +163,7 @@ contract PoolERC20COIN is PoolERC20BASE {
     function closePool() external nonReentrant onlyIsInOwners returns (bool) {
         uint256 token_reserve = _tokenB.balanceOf(address(this));
 
-        require(_tokenB.transfer(_operations, token_reserve), "MP:1");
+        require(_tokenB.transfer(_operations, token_reserve), "1");
         address payable ow = address(uint160(_operations));
 
         _coin_reserve = address(this).balance;
@@ -246,7 +246,7 @@ contract PoolERC20COIN is PoolERC20BASE {
     {
         require(!isPaused(), "p");
 
-        require(_stakes.StakeExist(_msgSender()), "MP:!");
+        require(_stakes.StakeExist(_msgSender()), "1");
 
         _withdrawReward(_msgSender(), amount, isCOIN);
 
@@ -272,9 +272,9 @@ contract PoolERC20COIN is PoolERC20BASE {
         uint256 remainder = 0;
 
         if (isCOIN) {
-            require(amount <= tka, "MP:1");
+            require(amount <= tka, "1");
 
-            require(amount <= getMyCoinBalance(), "MP:-c");
+            require(amount <= getMyCoinBalance(), "2");
 
             address(uint160(account)).transfer(amount);
 
@@ -282,11 +282,11 @@ contract PoolERC20COIN is PoolERC20BASE {
         } else {
             //token
 
-            require(amount <= tkb, "MP:a");
+            require(amount <= tkb, "3");
 
-            require(amount <= getMyTokensBalance(_erc20B), "MP:-t");
+            require(amount <= getMyTokensBalance(_erc20B), "4");
 
-            require(_tokenB.transfer(account, amount), "MP:5");
+            require(_tokenB.transfer(account, amount), "5");
 
             remainder = tkb.sub(amount);
         }
@@ -299,9 +299,9 @@ contract PoolERC20COIN is PoolERC20BASE {
     function coinToToken() public payable nonReentrant returns (uint256) {
         require(!isPaused(), "p");
 
-        require(totalLiquidity > 0, "MP:0");
+        require(totalLiquidity > 0, "1");
 
-        require(!isOverLimit(msg.value, true), "MP:c");
+        require(!isOverLimit(msg.value, true), "2");
 
         uint256 token_reserve = _tokenB.balanceOf(address(this));
 
@@ -310,12 +310,11 @@ contract PoolERC20COIN is PoolERC20BASE {
         uint256 tokens_bought0fee =
             planePrice(msg.value, _coin_reserve, token_reserve);
 
-        //_coin_reserve=_coin_reserve.add(msg.value);
         _coin_reserve = address(this).balance;
 
-        require(tokens_bought <= getMyTokensBalance(_erc20B), "MP:a");
+        require(tokens_bought <= getMyTokensBalance(_erc20B), "3");
 
-        require(_tokenB.transfer(_msgSender(), tokens_bought), "MP:b");
+        require(_tokenB.transfer(_msgSender(), tokens_bought), "4");
 
         emit PurchasedTokens(_msgSender(), msg.value, tokens_bought);
 
@@ -334,12 +333,12 @@ contract PoolERC20COIN is PoolERC20BASE {
         ) = calcFees(tokens_fee);
 
         if (_isBNBenv) {
-            require(_tokenB.transfer(_beneficiary, tokens_opPart), "MP:2");
+            require(_tokenB.transfer(_beneficiary, tokens_opPart), "5");
         } else {
-            require(_tokenB.transfer(_operations, tokens_opPart), "MP:3");
+            require(_tokenB.transfer(_operations, tokens_opPart), "6");
         }
 
-        require(_tokenB.transfer(_crossbeneficiary, tokens_crPart), "MP:1");
+        require(_tokenB.transfer(_crossbeneficiary, tokens_crPart), "7");
 
         processRewardInfo memory slot;
 
@@ -361,7 +360,7 @@ contract PoolERC20COIN is PoolERC20BASE {
         uint256 leftover = tokens_liqPart.sub(slot.dealed);
 
         if (leftover > 0) {
-            require(_tokenB.transfer(_operations, leftover), "MP:4");
+            require(_tokenB.transfer(_operations, leftover), "8");
             emit NewLeftover(_operations, leftover, false);
         }
 
@@ -377,12 +376,12 @@ contract PoolERC20COIN is PoolERC20BASE {
 
         require(
             _tokenB.allowance(_msgSender(), address(this)) >= token_amount,
-            "!aptk"
+            "0"
         );
 
-        require(totalLiquidity > 0, "MP:0");
+        require(totalLiquidity > 0, "1");
 
-        require(!isOverLimit(token_amount, false), "DX:c");
+        require(!isOverLimit(token_amount, false), "2");
 
         uint256 token_reserve = _tokenB.balanceOf(address(this));
 
@@ -391,7 +390,7 @@ contract PoolERC20COIN is PoolERC20BASE {
         uint256 eth_bought0fee =
             planePrice(token_amount, token_reserve, _coin_reserve);
 
-        require(eth_bought <= getMyCoinBalance(), "DX:!");
+        require(eth_bought <= getMyCoinBalance(), "3");
 
         _msgSender().transfer(eth_bought);
 
@@ -550,13 +549,13 @@ contract PoolERC20COIN is PoolERC20BASE {
         nonReentrant
         returns (uint256, uint256)
     {
-        require(_stakes.StakeExist(account), "MP:!");
+        require(_stakes.StakeExist(account), "1");
 
         uint256 inv_liq;
 
         (inv_liq, , ) = _stakes.getStake(account);
 
-        require(liquid <= inv_liq, "MP:3");
+        require(liquid <= inv_liq, "2");
 
         uint256 tokenB_reserve = _tokenB.balanceOf(address(this));
 
@@ -564,9 +563,9 @@ contract PoolERC20COIN is PoolERC20BASE {
 
         uint256 tokenB_amount = liquid.mul(tokenB_reserve).div(totalLiquidity);
 
-        require(tka_amount <= getMyCoinBalance(), "MP:1");
+        require(tka_amount <= getMyCoinBalance(), "3");
 
-        require(tokenB_amount <= getMyTokensBalance(_erc20B), "MP:2");
+        require(tokenB_amount <= getMyTokensBalance(_erc20B), "4");
 
         _stakes.substractFromStake(account, liquid);
 
@@ -578,7 +577,7 @@ contract PoolERC20COIN is PoolERC20BASE {
 
         _coin_reserve = address(this).balance;
 
-        require(_tokenB.transfer(account, tokenB_amount), "MP:3");
+        require(_tokenB.transfer(account, tokenB_amount), "5");
 
         emit LiquidityWithdraw(
             account,
@@ -596,9 +595,9 @@ contract PoolERC20COIN is PoolERC20BASE {
     {
         require(!isPaused(), "p");
 
-        require(totalLiquidity > 0, "MP:0");
+        require(totalLiquidity > 0, "6");
 
-        require(_stakes.StakeExist(_msgSender()), "MP:!");
+        require(_stakes.StakeExist(_msgSender()), "7");
 
         return _withdrawFunds(_msgSender(), liquid);
     }

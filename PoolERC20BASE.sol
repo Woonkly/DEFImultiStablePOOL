@@ -126,7 +126,7 @@ contract PoolERC20BASE is BaseLMH, Owners, PausabledLMH, ReentrancyGuard {
         onlyIsInOwners
         returns (bool)
     {
-        require(newBn != address(0), "DX:0addr");
+        require(newBn != address(0), "1");
         address old = _beneficiary;
         _beneficiary = newBn;
         emit BeneficiaryChanged(old, _beneficiary);
@@ -142,7 +142,7 @@ contract PoolERC20BASE is BaseLMH, Owners, PausabledLMH, ReentrancyGuard {
         onlyIsInOwners
         returns (bool)
     {
-        require(newBn != address(0), "DX:0addr");
+        require(newBn != address(0), "1");
         address old = _crossbeneficiary;
         _crossbeneficiary = newBn;
         emit CrossBeneficiaryChanged(old, _crossbeneficiary);
@@ -158,7 +158,7 @@ contract PoolERC20BASE is BaseLMH, Owners, PausabledLMH, ReentrancyGuard {
         onlyIsInOwners
         returns (bool)
     {
-        require((newFee > 0 && newFee <= 1000000), "DX:!");
+        require((newFee > 0 && newFee <= 1000000), "1");
         uint32 old = _feeOperation;
         _feeOperation = newFee;
         emit FeeOperationChanged(old, _feeOperation);
@@ -174,7 +174,7 @@ contract PoolERC20BASE is BaseLMH, Owners, PausabledLMH, ReentrancyGuard {
         onlyIsInOwners
         returns (bool)
     {
-        require((newFee > 0 && newFee <= 1000000), "DX:!");
+        require((newFee > 0 && newFee <= 1000000), "1");
         uint32 old = _feeReward;
         _feeReward = newFee;
         emit FeeRewardChanged(old, _feeReward);
@@ -186,7 +186,7 @@ contract PoolERC20BASE is BaseLMH, Owners, PausabledLMH, ReentrancyGuard {
     }
 
     function setFeeCROSS(uint32 newFee) external onlyIsInOwners returns (bool) {
-        require((newFee > 0 && newFee <= 1000000), "DX:!");
+        require((newFee > 0 && newFee <= 1000000), "1");
         uint32 old = _feeCross;
         _feeCross = newFee;
         emit CROSSRewardChanged(old, _feeReward);
@@ -198,7 +198,7 @@ contract PoolERC20BASE is BaseLMH, Owners, PausabledLMH, ReentrancyGuard {
     }
 
     function setBaseFee(uint32 newbFee) external onlyIsInOwners returns (bool) {
-        require((newbFee > 0 && newbFee <= 1000000), "DX:!");
+        require((newbFee > 0 && newbFee <= 1000000), "1");
         uint32 old = _baseFee;
         _baseFee = newbFee;
         emit BaseFeeChanged(old, _baseFee);
@@ -229,7 +229,7 @@ contract PoolERC20BASE is BaseLMH, Owners, PausabledLMH, ReentrancyGuard {
         onlyIsInOwners
         returns (bool)
     {
-        require(newOp != address(0), "DX:0addr");
+        require(newOp != address(0), "1");
         address old = _operations;
         _operations = newOp;
         emit OperationsChanged(old, _operations);
@@ -241,7 +241,7 @@ contract PoolERC20BASE is BaseLMH, Owners, PausabledLMH, ReentrancyGuard {
     }
 
     function setStakeAddr(address news) external onlyIsInOwners returns (bool) {
-        require(news != address(0), "!0");
+        require(news != address(0), "1");
         address old = _stakeable;
         _stakeable = news;
         _stakes = IWStaked(news);
@@ -258,7 +258,7 @@ contract PoolERC20BASE is BaseLMH, Owners, PausabledLMH, ReentrancyGuard {
         onlyIsInOwners
         returns (bool)
     {
-        require(news != address(0), "!0");
+        require(news != address(0), "1");
         address old = _erc20B;
         _erc20B = news;
         _tokenB = ERC20(news);
@@ -300,7 +300,7 @@ contract PoolERC20BASE is BaseLMH, Owners, PausabledLMH, ReentrancyGuard {
     }
 
     function calcFees(uint256 amount)
-        public
+        internal
         view
         returns (
             uint256,
@@ -327,19 +327,12 @@ contract PoolERC20BASE is BaseLMH, Owners, PausabledLMH, ReentrancyGuard {
         if (!_stakes.StakeExist(account)) return (0, 0);
 
         uint256 liq = 0;
-        uint256 part = 0;
 
         (liq, , ) = _stakes.getStake(account);
 
-        if (liq == 0) return (0, 0);
+        uint256 part = (liq * amount).div(totalLiquidity);
 
-        part = (liq * amount).div(totalLiquidity);
-
-        if (part == 0) return (0, 0);
-
-        uint256 remainder = amount - part;
-
-        return (part, remainder);
+        return (part,  amount - part );
     }
 
     function _DealLiquidity(
